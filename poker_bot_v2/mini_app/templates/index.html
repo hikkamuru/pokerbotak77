@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Poker Club App</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --bg2: #1a1a1a;
+    --bg3: #222222;
+    --card: #181818;
+    --red: #d9232d;
+    --red2: #b01c25;
+    --red-glow: rgba(217,35,45,0.18);
+    --text: #f0f0f0;
+    --muted: #888;
+    --border: #2a2a2a;
+    --radius: 14px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; overflow:hidden; }
+
+  /* ── SCREENS ── */
+  .screen { display:none; flex-direction:column; height:100vh; overflow:hidden; }
+  .screen.active { display:flex; }
+
+  /* ── NAV ── */
+  .nav { display:flex; background:var(--bg2); border-top:1px solid var(--border); padding:8px 0 calc(8px + env(safe-area-inset-bottom)); flex-shrink:0; }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; border:none; background:none; color:var(--muted); font-size:10px; font-family:'Inter',sans-serif; cursor:pointer; padding:4px 0; transition:color .2s; }
+  .nav-btn.active, .nav-btn:hover { color:var(--red); }
+  .nav-btn svg { width:20px; height:20px; }
+
+  /* ── SCROLL CONTENT ── */
+  .content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 16px 0; }
+  .content::-webkit-scrollbar { display:none; }
+
+  /* ── HEADER ── */
+  .page-header { padding:16px 16px 0; flex-shrink:0; }
+  .page-title { font-family:'Oswald',sans-serif; font-size:32px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#fff; line-height:1; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:4px; }
+
+  /* ── HOME SCREEN ── */
+  .next-card { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; cursor:pointer; border:1px solid var(--border); transition:border-color .2s; }
+  .next-card:hover { border-color:#444; }
+  .next-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .next-title { font-family:'Oswald',sans-serif; font-size:22px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#fff; margin-bottom:8px; }
+  .next-meta { display:flex; gap:12px; }
+  .next-meta span { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:5px; }
+  .next-meta span b { color:var(--text); }
+
+  .banner-red { background:linear-gradient(120deg, var(--red2) 0%, #8b0000 100%); border-radius:var(--radius); padding:20px 16px; margin-bottom:12px; cursor:pointer; position:relative; overflow:hidden; }
+  .banner-red::after { content:''; position:absolute; right:-20px; top:50%; transform:translateY(-50%); width:100px; height:100px; background:rgba(0,0,0,.2); border-radius:50%; }
+  .banner-red .b-tag { font-size:11px; color:rgba(255,255,255,.7); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+  .banner-red .b-title { font-family:'Oswald',sans-serif; font-size:26px; font-weight:700; text-transform:uppercase; color:#fff; line-height:1.1; }
+  .banner-red .b-sub { font-size:13px; color:rgba(255,255,255,.8); margin-top:6px; display:flex; align-items:center; gap:5px; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .small-card { background:var(--card); border-radius:var(--radius); padding:14px; cursor:pointer; border:1px solid var(--border); }
+  .small-card .sc-title { font-family:'Oswald',sans-serif; font-size:15px; font-weight:600; text-transform:uppercase; margin-bottom:4px; }
+  .small-card .sc-sub { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+
+  /* ── TOURNAMENT LIST ── */
+  .filter-row { display:flex; gap:8px; padding:12px 16px 0; flex-shrink:0; }
+  .filter-btn { padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:var(--bg3); color:var(--muted); font-size:13px; cursor:pointer; white-space:nowrap; transition:all .2s; }
+  .filter-btn.active { background:var(--red); border-color:var(--red); color:#fff; }
+
+  .tour-card { background:var(--card); border-radius:var(--radius); overflow:hidden; margin-bottom:10px; cursor:pointer; border:1px solid var(--border); transition:border-color .2s; }
+  .tour-card:hover { border-color:#444; }
+  .tour-card-inner { padding:14px; }
+  .tour-title { font-family:'Oswald',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#fff; margin-bottom:8px; }
+  .tour-meta { display:flex; gap:12px; }
+  .tour-meta span { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+  .tour-meta span b { color:var(--text); }
+  .tour-full { color:var(--red) !important; }
+
+  /* ── TOURNAMENT DETAIL ── */
+  .back-btn { display:flex; align-items:center; gap:6px; color:var(--red); font-size:14px; cursor:pointer; padding:4px 0; margin-bottom:12px; background:none; border:none; font-family:'Inter',sans-serif; }
+  .tour-banner { width:100%; aspect-ratio:16/7; object-fit:cover; border-radius:var(--radius); margin-bottom:14px; background:linear-gradient(135deg,#2a0a0a,#1a0505); display:flex; align-items:center; justify-content:center; }
+  .tour-banner-title { font-family:'Oswald',sans-serif; font-size:28px; font-weight:700; text-transform:uppercase; color:#fff; text-align:center; }
+  .tabs { display:flex; background:var(--bg3); border-radius:10px; padding:3px; margin-bottom:16px; }
+  .tab { flex:1; padding:8px; text-align:center; font-size:13px; border-radius:8px; cursor:pointer; color:var(--muted); transition:all .2s; }
+  .tab.active { background:var(--red); color:#fff; }
+  .info-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; font-size:14px; color:var(--muted); }
+  .info-row b { color:var(--text); }
+  .reg-btn { width:100%; padding:14px; background:var(--red); color:#fff; border:none; border-radius:var(--radius); font-family:'Oswald',sans-serif; font-size:18px; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer; margin-top:8px; transition:background .2s; }
+  .reg-btn:hover { background:var(--red2); }
+  .reg-btn.cancel { background:var(--bg3); border:1px solid var(--border); color:var(--muted); }
+  .participant-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .participant-avatar { width:34px; height:34px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; color:var(--red); flex-shrink:0; }
+  .participant-name { font-size:14px; color:var(--text); }
+  .participant-num { margin-left:auto; font-size:13px; color:var(--muted); }
+
+  /* ── RATING ── */
+  .rating-header { padding:16px; flex-shrink:0; }
+  .seg-control { display:flex; background:var(--bg3); border-radius:10px; padding:3px; margin-bottom:12px; }
+  .seg-btn { flex:1; padding:7px 4px; text-align:center; font-size:13px; border-radius:8px; cursor:pointer; color:var(--muted); transition:all .2s; }
+  .seg-btn.active { background:var(--bg2); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .search-box { position:relative; margin-bottom:12px; }
+  .search-box input { width:100%; padding:10px 12px 10px 36px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:14px; font-family:'Inter',sans-serif; outline:none; }
+  .search-box input::placeholder { color:var(--muted); }
+  .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); }
+  .rating-table { width:100%; border-collapse:collapse; }
+  .rating-table th { font-size:11px; color:var(--muted); text-align:right; padding:6px 8px; font-weight:500; text-transform:uppercase; letter-spacing:.5px; }
+  .rating-table th:first-child { text-align:left; }
+  .rating-table td { padding:10px 8px; border-bottom:1px solid var(--border); font-size:14px; text-align:right; }
+  .rating-table td:first-child { text-align:left; }
+  .player-cell { display:flex; align-items:center; gap:10px; }
+  .place-num { font-size:13px; color:var(--muted); min-width:20px; }
+  .player-av { width:32px; height:32px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:var(--red); flex-shrink:0; }
+  .player-name { font-size:13px; color:var(--text); }
+  .gold { color:#f5c842; }
+  .silver { color:#aaa; }
+  .bronze { color:#cd7f32; }
+  .rating-val { font-weight:600; color:var(--text); }
+
+  /* ── PROFILE ── */
+  .profile-top { display:flex; align-items:center; gap:14px; padding:20px 16px 16px; flex-shrink:0; }
+  .profile-av { width:64px; height:64px; border-radius:50%; background:var(--bg3); border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-family:'Oswald',sans-serif; font-size:24px; font-weight:700; color:var(--red); flex-shrink:0; }
+  .profile-name { font-family:'Oswald',sans-serif; font-size:22px; font-weight:700; color:#fff; }
+  .profile-username { font-size:13px; color:var(--muted); }
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 16px 16px; flex-shrink:0; }
+  .stat-box { background:var(--card); border-radius:12px; padding:12px; text-align:center; border:1px solid var(--border); }
+  .stat-val { font-family:'Oswald',sans-serif; font-size:22px; font-weight:700; color:#fff; }
+  .stat-label { font-size:11px; color:var(--muted); margin-top:2px; }
+  .profile-section { background:var(--card); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; border:1px solid var(--border); }
+  .profile-row { display:flex; align-items:center; padding:14px 16px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .profile-row:last-child { border-bottom:none; }
+  .profile-row-icon { width:32px; height:32px; background:var(--bg3); border-radius:8px; display:flex; align-items:center; justify-content:center; margin-right:12px; flex-shrink:0; }
+  .profile-row-label { font-size:14px; color:var(--text); }
+  .profile-row-value { margin-left:auto; font-size:13px; color:var(--muted); }
+  .toggle { width:44px; height:24px; background:var(--bg3); border-radius:12px; position:relative; cursor:pointer; transition:background .2s; margin-left:auto; flex-shrink:0; }
+  .toggle.on { background:var(--red); }
+  .toggle::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:3px; left:3px; transition:transform .2s; }
+  .toggle.on::after { transform:translateX(20px); }
+
+  /* ── LOADING ── */
+  .spinner { width:32px; height:32px; border:2px solid var(--border); border-top-color:var(--red); border-radius:50%; animation:spin .7s linear infinite; margin:40px auto; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── TOAST ── */
+  .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px); background:#222; color:#fff; padding:10px 20px; border-radius:20px; font-size:13px; opacity:0; transition:all .3s; pointer-events:none; white-space:nowrap; z-index:999; border:1px solid var(--border); }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ── HOME ──────────────────────────────────────────────────────── -->
+<div id="screen-home" class="screen active">
+  <div class="content" id="home-content">
+    <div style="padding-top:4px"></div>
+    <div id="next-tournament-card"></div>
+    <div class="banner-red" onclick="switchScreen('rating')">
+      <div class="b-tag">Таблица лидеров</div>
+      <div class="b-title">Рейтинг<br>игроков</div>
+      <div class="b-sub">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        Смотреть рейтинг
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="small-card" onclick="switchScreen('tournaments')">
+        <div class="sc-title">Турниры</div>
+        <div class="sc-sub">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>
+          Все турниры
+        </div>
+      </div>
+      <div class="small-card" id="home-about-card">
+        <div class="sc-title">О клубе</div>
+        <div class="sc-sub">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          История
+        </div>
+      </div>
+    </div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchScreen('home')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Главная
+    </button>
+    <button class="nav-btn" onclick="switchScreen('tournaments')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>
+      Турниры
+    </button>
+    <button class="nav-btn" onclick="switchScreen('rating')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+      Рейтинг
+    </button>
+    <button class="nav-btn" onclick="switchScreen('profile')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Профиль
+    </button>
+  </nav>
+</div>
+
+<!-- ── TOURNAMENTS ─────────────────────────────────────────────── -->
+<div id="screen-tournaments" class="screen">
+  <div class="filter-row">
+    <button class="filter-btn active" id="f-upcoming" onclick="filterTournaments('upcoming')">Текущие</button>
+    <button class="filter-btn" id="f-finished" onclick="filterTournaments('finished')">Прошедшие</button>
+  </div>
+  <div class="content" id="tours-content">
+    <div style="padding-top:8px"></div>
+    <div id="tours-list"><div class="spinner"></div></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Главная
+    </button>
+    <button class="nav-btn active" onclick="switchScreen('tournaments')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>
+      Турниры
+    </button>
+    <button class="nav-btn" onclick="switchScreen('rating')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+      Рейтинг
+    </button>
+    <button class="nav-btn" onclick="switchScreen('profile')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Профиль
+    </button>
+  </nav>
+</div>
+
+<!-- ── TOURNAMENT DETAIL ──────────────────────────────────────── -->
+<div id="screen-tour-detail" class="screen">
+  <div class="content" id="tour-detail-content">
+    <div style="padding-top:8px"></div>
+    <div id="tour-detail-inner"></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn active" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Рейтинг</button>
+    <button class="nav-btn" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ── RATING ──────────────────────────────────────────────────── -->
+<div id="screen-rating" class="screen">
+  <div class="rating-header">
+    <div class="page-title" style="padding:16px 0 12px">Рейтинг</div>
+    <div class="seg-control">
+      <div class="seg-btn active" id="seg-global" onclick="switchRating('global')">Глобальный</div>
+      <div class="seg-btn" id="seg-season" onclick="switchRating('season')">Сезонный</div>
+    </div>
+    <div class="search-box">
+      <span class="search-icon">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input type="text" placeholder="Поиск по никнейму..." id="rating-search" oninput="filterRating(this.value)">
+    </div>
+  </div>
+  <div class="content" id="rating-content">
+    <table class="rating-table" id="rating-table-body">
+      <thead><tr>
+        <th>Никнейм</th>
+        <th>Ноки</th>
+        <th>PRO</th>
+        <th>Рейтинг</th>
+      </tr></thead>
+      <tbody id="rating-rows"><tr><td colspan="4"><div class="spinner"></div></td></tr></tbody>
+    </table>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn active" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Рейтинг</button>
+    <button class="nav-btn" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ── PROFILE ─────────────────────────────────────────────────── -->
+<div id="screen-profile" class="screen">
+  <div class="profile-top">
+    <div class="profile-av" id="profile-av"><span id="profile-av-letter">?</span></div>
+    <div>
+      <div class="profile-name" id="profile-name">—</div>
+      <div class="profile-username" id="profile-username"></div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="stat-rating">0</div><div class="stat-label">Рейтинг</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-knockouts">0</div><div class="stat-label">Ноки</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-games">0</div><div class="stat-label">Игр</div></div>
+  </div>
+  <div class="content">
+    <div class="profile-section">
+      <div class="profile-row" onclick="showToast('История игр скоро...')">
+        <div class="profile-row-icon">🃏</div>
+        <div class="profile-row-label">История игр</div>
+        <div class="profile-row-value" id="games-count">0</div>
+      </div>
+      <div class="profile-row">
+        <div class="profile-row-icon">📍</div>
+        <div class="profile-row-label">Мой город</div>
+        <div class="profile-row-value" id="profile-city">Не указан</div>
+      </div>
+      <div class="profile-row" id="free-entry-row">
+        <div class="profile-row-icon">🎟</div>
+        <div class="profile-row-label">Free Entry</div>
+        <div class="profile-row-value" id="free-entry-val">0</div>
+      </div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-row">
+        <div class="profile-row-icon">🔔</div>
+        <div class="profile-row-label">Пуш-уведомления</div>
+        <div class="toggle on" id="push-toggle" onclick="togglePush()"></div>
+      </div>
+    </div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>Рейтинг</button>
+    <button class="nav-btn active" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const API = '';
+let currentUser = null;
+let allPlayers = [];
+let ratingMode = 'global';
+let currentFilter = 'upcoming';
+
+// ── API calls ──────────────────────────────────────────────────
+async function api(path) {
+  try {
+    const headers = {};
+    if (tg?.initData) headers['X-Telegram-Init-Data'] = tg.initData;
+    const r = await fetch(API + path, { headers });
+    return r.ok ? r.json() : null;
+  } catch { return null; }
+}
+
+async function apiPost(path, body) {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (tg?.initData) headers['X-Telegram-Init-Data'] = tg.initData;
+    const r = await fetch(API + path, { method: 'POST', headers, body: JSON.stringify(body) });
+    return r.ok ? r.json() : null;
+  } catch { return null; }
+}
+
+// ── SCREENS ───────────────────────────────────────────────────
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (name === 'tournaments') loadTournaments();
+  if (name === 'rating') loadRating();
+  if (name === 'profile') loadProfile();
+  if (name === 'home') loadHome();
+}
+
+// ── HOME ──────────────────────────────────────────────────────
+async function loadHome() {
+  const data = await api('/api/tournaments?status=upcoming');
+  const el = document.getElementById('next-tournament-card');
+  if (!data || !data.length) {
+    el.innerHTML = '<div class="next-card"><div class="next-label">Ближайший турнир</div><div style="color:var(--muted);font-size:14px">Нет запланированных турниров</div></div>';
+    return;
+  }
+  const t = data[0];
+  const filled = t.registered_count || 0;
+  const full = filled >= t.max_players;
+  el.innerHTML = `
+    <div class="next-card" onclick="openTournament(${t.id})">
+      <div class="next-label">Ближайший турнир</div>
+      <div class="next-title">${t.title}</div>
+      <div class="next-meta">
+        <span><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <b class="${full ? 'tour-full' : ''}">${filled}/${t.max_players}</b></span>
+        <span><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <b>${fmtDate(t.start_time)}</b></span>
+      </div>
+    </div>`;
+}
+
+// ── TOURNAMENTS ───────────────────────────────────────────────
+async function loadTournaments() {
+  const el = document.getElementById('tours-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  const data = await api(`/api/tournaments?status=${currentFilter}`);
+  if (!data || !data.length) {
+    el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:24px">Нет турниров</p>';
+    return;
+  }
+  el.innerHTML = data.map(t => {
+    const filled = t.registered_count || 0;
+    const full = filled >= t.max_players;
+    return `
+    <div class="tour-card" onclick="openTournament(${t.id})">
+      <div class="tour-card-inner">
+        <div class="tour-title">${t.title}</div>
+        <div class="tour-meta">
+          <span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <b class="${full ? 'tour-full' : ''}">${filled}/${t.max_players}</b></span>
+          <span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <b>${fmtDate(t.start_time)}</b></span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterTournaments(f) {
+  currentFilter = f;
+  document.getElementById('f-upcoming').classList.toggle('active', f === 'upcoming');
+  document.getElementById('f-finished').classList.toggle('active', f === 'finished');
+  loadTournaments();
+}
+
+async function openTournament(id) {
+  switchScreen('tour-detail');
+  const el = document.getElementById('tour-detail-inner');
+  el.innerHTML = '<div class="spinner"></div>';
+  const [t, reg] = await Promise.all([
+    api(`/api/tournament/${id}`),
+    api(`/api/my-registration/${id}`)
+  ]);
+  if (!t) { el.innerHTML = '<p style="color:var(--muted);padding:24px">Не удалось загрузить</p>'; return; }
+  const isReg = reg?.registered;
+  const filled = t.registered_count || 0;
+  el.innerHTML = `
+    <button class="back-btn" onclick="switchScreen('tournaments')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Назад
+    </button>
+    <div class="tour-banner"><div class="tour-banner-title">${t.title}</div></div>
+    <div class="tabs" id="detail-tabs">
+      <div class="tab active" onclick="showTab('info')">О турнире</div>
+      <div class="tab" onclick="showTab('participants')">Участники (${filled}/${t.max_players})</div>
+    </div>
+    <div id="tab-info">
+      ${t.address ? `<div class="info-row"><span>📍</span><div><b>${t.location || ''}</b><br>${t.address}</div></div>` : ''}
+      <div class="info-row">⏰ <b>${fmtDate(t.start_time)}</b></div>
+      ${t.buy_in ? `<div class="info-row">💰 Бай-ин: <b>${t.buy_in} ₽</b></div>` : ''}
+      ${t.prize_pool ? `<div class="info-row">🏆 Призовой фонд: <b>${t.prize_pool}</b></div>` : ''}
+      ${t.description ? `<div style="font-size:14px;color:var(--muted);margin:12px 0;line-height:1.6">${t.description}</div>` : ''}
+      ${t.rules ? `<div style="margin-top:10px"><div style="font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Правила</div><div style="font-size:13px;color:var(--muted);line-height:1.6">${t.rules}</div></div>` : ''}
+      <button class="reg-btn ${isReg ? 'cancel' : ''}" id="reg-btn" onclick="toggleReg(${id}, ${isReg})">
+        ${isReg ? '❌ Отменить регистрацию' : '✅ Зарегистрироваться'}
+      </button>
+    </div>
+    <div id="tab-participants" style="display:none">
+      <div id="participants-list"><div class="spinner"></div></div>
+    </div>`;
+}
+
+function showTab(tab) {
+  document.querySelectorAll('#detail-tabs .tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'info')));
+  document.getElementById('tab-info').style.display = tab === 'info' ? '' : 'none';
+  document.getElementById('tab-participants').style.display = tab === 'participants' ? '' : 'none';
+  if (tab === 'participants') loadParticipants();
+}
+
+async function loadParticipants() {
+  const screen = document.getElementById('tour-detail-inner');
+  const tourId = screen.querySelector('[onclick*="toggleReg"]')?.getAttribute('onclick')?.match(/\d+/)?.[0];
+  if (!tourId) return;
+  const el = document.getElementById('participants-list');
+  const data = await api(`/api/tournament/${tourId}/participants`);
+  if (!data || !data.length) { el.innerHTML = '<p style="color:var(--muted);padding:16px">Пока нет участников</p>'; return; }
+  el.innerHTML = data.map((p, i) => `
+    <div class="participant-row">
+      <div class="participant-avatar">${p.full_name[0]}</div>
+      <div class="participant-name">${p.full_name}${p.username ? ' @' + p.username : ''}</div>
+      <div class="participant-num">#${i + 1}</div>
+    </div>`).join('');
+}
+
+async function toggleReg(id, isReg) {
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true;
+  const endpoint = isReg ? `/api/unregister/${id}` : `/api/register/${id}`;
+  const res = await apiPost(endpoint, {});
+  if (res?.ok) {
+    showToast(isReg ? 'Регистрация отменена' : '✅ Ты зарегистрирован!');
+    openTournament(id);
+  } else {
+    showToast(res?.reason === 'full' ? 'Турнир заполнен' : 'Ошибка, попробуй снова');
+    btn.disabled = false;
+  }
+}
+
+// ── RATING ────────────────────────────────────────────────────
+async function loadRating() {
+  const data = await api('/api/leaderboard');
+  allPlayers = data || [];
+  renderRating(allPlayers);
+}
+
+function renderRating(players) {
+  const tbody = document.getElementById('rating-rows');
+  const field = ratingMode === 'season' ? 'pro_score' : 'rating';
+  const sorted = [...players].sort((a, b) => (b[field] || 0) - (a[field] || 0));
+  tbody.innerHTML = sorted.map((p, i) => {
+    const place = i + 1;
+    const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : '';
+    return `
+    <tr>
+      <td><div class="player-cell">
+        <span class="place-num">${medal || place}</span>
+        <div class="player-av">${p.full_name[0]}</div>
+        <span class="player-name">${p.full_name}</span>
+      </div></td>
+      <td>${p.knockouts || 0}</td>
+      <td>${Math.round(p.pro_score || 0)}</td>
+      <td class="rating-val">${Math.round(p.rating || 0)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Нет данных</td></tr>';
+}
+
+function switchRating(mode) {
+  ratingMode = mode;
+  document.getElementById('seg-global').classList.toggle('active', mode === 'global');
+  document.getElementById('seg-season').classList.toggle('active', mode === 'season');
+  renderRating(allPlayers);
+}
+
+function filterRating(q) {
+  const filtered = q ? allPlayers.filter(p =>
+    p.full_name.toLowerCase().includes(q.toLowerCase()) ||
+    (p.username || '').toLowerCase().includes(q.toLowerCase())
+  ) : allPlayers;
+  renderRating(filtered);
+}
+
+// ── PROFILE ───────────────────────────────────────────────────
+async function loadProfile() {
+  // Telegram user data (name, photo) — берём прямо из WebApp
+  const tgUser = tg?.initDataUnsafe?.user;
+  if (tgUser) {
+    const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
+    document.getElementById('profile-name').textContent = fullName || '—';
+    document.getElementById('profile-username').textContent = tgUser.username ? '@' + tgUser.username : '';
+
+    const avEl = document.getElementById('profile-av');
+    if (tgUser.photo_url) {
+      avEl.innerHTML = `<img src="${tgUser.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span>${(fullName[0] || '?')}</span>'">`;
+    } else {
+      avEl.innerHTML = `<span>${fullName[0] || '?'}</span>`;
+    }
+  }
+
+  // Игровая статистика — из базы через API
+  const data = await api('/api/my-profile');
+  if (!data) return;
+  currentUser = data;
+  document.getElementById('stat-rating').textContent = Math.round(data.rating || 0);
+  document.getElementById('stat-knockouts').textContent = data.knockouts || 0;
+  document.getElementById('stat-games').textContent = data.games_count || 0;
+  document.getElementById('games-count').textContent = data.games_count || 0;
+  document.getElementById('profile-city').textContent = data.city || 'Не указан';
+  document.getElementById('free-entry-val').textContent = data.free_entry || 0;
+  document.getElementById('push-toggle').classList.toggle('on', !!data.push_notify);
+
+  // Если tgUser недоступен (локальная разработка) — фолбэк из БД
+  if (!tgUser) {
+    document.getElementById('profile-name').textContent = data.full_name || '—';
+    document.getElementById('profile-username').textContent = data.username ? '@' + data.username : '';
+    document.getElementById('profile-av').innerHTML = `<span>${(data.full_name || '?')[0]}</span>`;
+  }
+}
+
+function togglePush() {
+  const t = document.getElementById('push-toggle');
+  t.classList.toggle('on');
+  showToast(t.classList.contains('on') ? 'Уведомления включены' : 'Уведомления выключены');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function fmtDate(s) {
+  if (!s) return '';
+  try {
+    const d = new Date(s);
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')} / ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  } catch { return s; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+loadHome();
+</script>
+</body>
+</html>
