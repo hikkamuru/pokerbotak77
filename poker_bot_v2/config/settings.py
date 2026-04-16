@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ADMIN_IDS: str = ""
     CLUB_NAME: str = "Poker Club"
     WEBAPP_URL: str = "https://ak-77-poker.ru/"
-    API_URL: str = "https://ak-77-poker.ru"
+    API_URL: str = "https://pokerbot.bothost.ru"
     WEBAPP_HOST: str = "0.0.0.0"
     WEBAPP_PORT: int = 8080
 
