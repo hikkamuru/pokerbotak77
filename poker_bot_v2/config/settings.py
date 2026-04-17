@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     CLUB_NAME: str = "Poker Club"
     WEBAPP_URL: str = "https://pokerbot.bothost.ru/"
     API_URL: str = ""
+    SITE_URL: str = ""
     WEBAPP_HOST: str = "0.0.0.0"
     WEBAPP_PORT: int = 8080
 
