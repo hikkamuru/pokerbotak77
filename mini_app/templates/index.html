@@ -759,12 +759,10 @@ async function api(method, path, body) {
   const tgUser = getTG();
 
   const h = {};
-  if (init)          h['X-Telegram-Init-Data'] = init;
-  if (tgUser?.id)    h['X-Telegram-User']       = JSON.stringify(tgUser);
-  if (body)          h['Content-Type']           = 'application/json';
+  if (init)       h['X-Telegram-Init-Data'] = init;
+  if (tgUser?.id) h['X-Telegram-User']      = JSON.stringify(tgUser);
 
   // Always add ?tg=ID to the URL — server accepts it as auth fallback.
-  // This works even when Telegram clients don't populate initData.
   let url = API + path;
   if (tgUser?.id) {
     const sep = url.includes('?') ? '&' : '?';
@@ -773,8 +771,17 @@ async function api(method, path, body) {
     if (tgUser.username)   url += '&un=' + encodeURIComponent(tgUser.username);
   }
 
+  // For POST/PUT: inject tg_id into the body so server can auth from body too.
+  let finalBody = body;
+  if (body && tgUser?.id) {
+    finalBody = { ...body, _tg_id: tgUser.id, _tg_fn: tgUser.first_name || '', _tg_un: tgUser.username || '' };
+  }
+
+  if (finalBody) h['Content-Type'] = 'application/json';
+
   const r = await fetch(url, {
-    method, headers: h, body: body ? JSON.stringify(body) : undefined
+    method, headers: h,
+    body: finalBody ? JSON.stringify(finalBody) : undefined
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error || 'Ошибка сервера');

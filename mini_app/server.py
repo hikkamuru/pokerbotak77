@@ -129,6 +129,23 @@ def get_tg_user(request: web.Request) -> dict | None:
         except (ValueError, TypeError):
             pass
 
+    # ── 4. _tg_id in JSON body (POST/PUT) ────────────────────────────────
+    # request.read() is cached in aiohttp — safe to call before handler reads body
+    if request.method in ("POST", "PUT", "PATCH"):
+        try:
+            raw = await request.read()           # cached; handler can re-read safely
+            body = json.loads(raw)
+            uid_raw = body.get("_tg_id")
+            if uid_raw:
+                uid = int(uid_raw)
+                if uid > 0:
+                    fn = str(body.get("_tg_fn", ""))
+                    un = str(body.get("_tg_un", ""))
+                    _log.warning("[AUTH] body-param fallback tg_id=%s", uid)
+                    return {"id": uid, "first_name": fn, "username": un, "last_name": ""}
+        except Exception:
+            pass
+
     _log.warning("[AUTH] no auth — headers=%s query=%s",
                  list(request.headers.keys()),
                  dict(request.rel_url.query))
