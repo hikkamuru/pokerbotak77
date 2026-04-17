@@ -81,7 +81,7 @@ def is_admin(tg_id: int) -> bool:
 
 def ok(data=None, status=200):
     return web.Response(
-        text=json.dumps(data or {}, ensure_ascii=False, default=str),
+        text=json.dumps({} if data is None else data, ensure_ascii=False, default=str),
         content_type="application/json",
         status=status,
     )
