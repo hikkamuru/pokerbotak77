@@ -55,24 +55,32 @@ async def preflight(request):
 # ── AUTH ─────────────────────────────────────────────────────────────────────
 
 def validate_init_data(raw: str) -> dict | None:
+    import logging
     try:
-        params = dict(parse_qsl(raw, strict_parsing=True))
+        params = dict(parse_qsl(raw, strict_parsing=False))
         h = params.pop("hash", None)
         if not h:
+            logging.warning("[AUTH] no hash in initData")
             return None
         check_str = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
-        secret = hmac.new(b"WebAppData", settings.BOT_TOKEN.encode(), hashlib.sha256).digest()
+        secret = hmac.new(b"WebAppData", settings.BOT_TOKEN.strip().encode(), hashlib.sha256).digest()
         expected = hmac.new(secret, check_str.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, h):
+            logging.warning(f"[AUTH] hash mismatch. expected={expected[:10]}... got={h[:10]}...")
             return None
         return json.loads(params.get("user", "{}"))
-    except Exception:
+    except Exception as e:
+        logging.warning(f"[AUTH] exception: {e}")
         return None
 
 
 def get_tg_user(request: web.Request) -> dict | None:
     raw = request.headers.get("X-Telegram-Init-Data", "")
-    return validate_init_data(raw) if raw else None
+    if not raw:
+        import logging
+        logging.warning("[AUTH] X-Telegram-Init-Data header is empty")
+        return None
+    return validate_init_data(raw)
 
 
 def is_admin(tg_id: int) -> bool:
