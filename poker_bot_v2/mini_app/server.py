@@ -24,7 +24,7 @@ routes = web.RouteTableDef()
 # ── CORS ─────────────────────────────────────────────────────────────────────
 
 CORS_HEADERS = {
-    "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Init-Data",
+    "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Init-Data, X-Telegram-User",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Max-Age": "86400",
 }
@@ -54,33 +54,53 @@ async def preflight(request):
 
 # ── AUTH ─────────────────────────────────────────────────────────────────────
 
+import logging as _log
+
 def validate_init_data(raw: str) -> dict | None:
-    import logging
     try:
         params = dict(parse_qsl(raw, strict_parsing=False))
         h = params.pop("hash", None)
         if not h:
-            logging.warning("[AUTH] no hash in initData")
+            _log.warning("[AUTH] no hash in initData, keys=%s", list(params.keys()))
             return None
         check_str = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
-        secret = hmac.new(b"WebAppData", settings.BOT_TOKEN.strip().encode(), hashlib.sha256).digest()
+        token = settings.BOT_TOKEN.strip()
+        secret   = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
         expected = hmac.new(secret, check_str.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, h):
-            logging.warning(f"[AUTH] hash mismatch. expected={expected[:10]}... got={h[:10]}...")
+            _log.warning("[AUTH] hash mismatch token_len=%d exp=%.10s got=%.10s", len(token), expected, h)
             return None
-        return json.loads(params.get("user", "{}"))
+        user = json.loads(params.get("user", "null") or "null")
+        if not user or not user.get("id"):
+            _log.warning("[AUTH] validated but user missing")
+            return None
+        _log.info("[AUTH] ok user_id=%s", user["id"])
+        return user
     except Exception as e:
-        logging.warning(f"[AUTH] exception: {e}")
+        _log.warning("[AUTH] exception: %s", e)
         return None
 
 
 def get_tg_user(request: web.Request) -> dict | None:
+    # Primary: full initData with HMAC signature
     raw = request.headers.get("X-Telegram-Init-Data", "")
-    if not raw:
-        import logging
-        logging.warning("[AUTH] X-Telegram-Init-Data header is empty")
-        return None
-    return validate_init_data(raw)
+    if raw:
+        return validate_init_data(raw)
+
+    # Fallback: Telegram Desktop sometimes sends empty initData.
+    # Accept X-Telegram-User header (unsigned) as a last resort.
+    user_json = request.headers.get("X-Telegram-User", "")
+    if user_json:
+        try:
+            user = json.loads(user_json)
+            if user.get("id"):
+                _log.warning("[AUTH] using unsigned X-Telegram-User fallback id=%s", user["id"])
+                return user
+        except Exception:
+            pass
+
+    _log.warning("[AUTH] no auth header")
+    return None
 
 
 def is_admin(tg_id: int) -> bool:
@@ -102,7 +122,7 @@ def err(msg: str, status=400):
 def require_auth(request):
     """Returns (user_dict, None) or (None, error_response)."""
     u = get_tg_user(request)
-    if not u:
+    if not u or not u.get("id"):
         return None, err("unauthorized", 401)
     return u, None
 
@@ -114,6 +134,34 @@ def require_admin(request):
     if not is_admin(u["id"]):
         return None, err("forbidden", 403)
     return u, None
+
+
+# ── DEBUG ────────────────────────────────────────────────────────────────────
+
+@routes.get("/api/debug-auth")
+async def debug_auth(request):
+    raw  = request.headers.get("X-Telegram-Init-Data", "")
+    user = request.headers.get("X-Telegram-User", "")
+    info = {
+        "init_data_len": len(raw),
+        "user_header_len": len(user),
+        "token_len": len(settings.BOT_TOKEN.strip()),
+    }
+    if raw:
+        try:
+            params = dict(parse_qsl(raw, strict_parsing=False))
+            h = params.pop("hash", None)
+            info["hash_present"] = bool(h)
+            info["keys"] = list(params.keys())
+            if h:
+                check_str = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
+                token  = settings.BOT_TOKEN.strip()
+                secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+                exp    = hmac.new(secret, check_str.encode(), hashlib.sha256).hexdigest()
+                info["hmac_valid"] = hmac.compare_digest(exp, h)
+        except Exception as e:
+            info["parse_error"] = str(e)
+    return ok(info)
 
 
 # ── PAGE ─────────────────────────────────────────────────────────────────────
