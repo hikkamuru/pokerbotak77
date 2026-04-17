@@ -1,12 +1,3 @@
-import subprocess
-import sys
-
-# Install missing packages at runtime (for bothost.ru)
-subprocess.check_call([
-    sys.executable, "-m", "pip", "install", "--quiet",
-    "aiosqlite==0.20.0", "pydantic-settings==2.7.0"
-])
-
 import asyncio
 import logging
 
