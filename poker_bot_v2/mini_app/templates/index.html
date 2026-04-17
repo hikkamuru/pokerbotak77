@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>AK77 Poker Club</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0e0e; --bg2:#1a1a1a; --bg3:#222; --card:#181818;
+  --red:#d9232d; --red2:#b01c25; --text:#f0f0f0; --muted:#888;
+  --border:#2a2a2a; --radius:14px; --green:#27ae60; --blue:#2980b9;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;height:100vh;overflow:hidden}
+.screen.active{display:flex}
+
+/* ── NAV ── */
+.nav{display:flex;background:var(--bg2);border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom));flex-shrink:0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;color:var(--muted);font-size:10px;font-family:'Inter',sans-serif;cursor:pointer;padding:4px 0;transition:color .2s}
+.nav-btn.active,.nav-btn:hover{color:var(--red)}
+.nav-btn svg{width:20px;height:20px}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 0}
+.content::-webkit-scrollbar{display:none}
+
+/* ── CARDS ── */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--border)}
+.next-card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;cursor:pointer;border:1px solid var(--border);transition:border-color .2s}
+.next-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.next-title{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;color:#fff;margin-bottom:8px}
+.next-meta{display:flex;gap:12px}
+.next-meta span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.next-meta span b{color:var(--text)}
+.banner-red{background:linear-gradient(120deg,var(--red2) 0%,#8b0000 100%);border-radius:var(--radius);padding:20px 16px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden}
+.banner-red .b-tag{font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.banner-red .b-title{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;text-transform:uppercase;color:#fff;line-height:1.1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.small-card{background:var(--card);border-radius:var(--radius);padding:14px;cursor:pointer;border:1px solid var(--border)}
+.small-card .sc-title{font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;text-transform:uppercase;margin-bottom:4px}
+.small-card .sc-sub{font-size:12px;color:var(--muted)}
+
+/* ── TOURNAMENT ── */
+.filter-row{display:flex;gap:8px;padding:12px 16px 0;flex-shrink:0}
+.filter-btn{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:13px;cursor:pointer;transition:all .2s}
+.filter-btn.active{background:var(--red);border-color:var(--red);color:#fff}
+.tour-card{background:var(--card);border-radius:var(--radius);margin-bottom:10px;cursor:pointer;border:1px solid var(--border);transition:border-color .2s}
+.tour-card-inner{padding:14px}
+.tour-title{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;color:#fff;margin-bottom:8px}
+.tour-meta{display:flex;gap:12px;flex-wrap:wrap}
+.tour-meta span{font-size:12px;color:var(--muted)}
+.tour-meta span b{color:var(--text)}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--red);font-size:14px;cursor:pointer;padding:4px 0;margin-bottom:12px;background:none;border:none;font-family:'Inter',sans-serif}
+.tour-banner{width:100%;aspect-ratio:16/7;border-radius:var(--radius);margin-bottom:14px;background:linear-gradient(135deg,#2a0a0a,#1a0505);display:flex;align-items:center;justify-content:center}
+.tour-banner-title{font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;text-transform:uppercase;color:#fff;text-align:center;padding:16px}
+.tabs{display:flex;background:var(--bg3);border-radius:10px;padding:3px;margin-bottom:16px}
+.tab{flex:1;padding:8px;text-align:center;font-size:13px;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .2s}
+.tab.active{background:var(--red);color:#fff}
+.info-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:14px;color:var(--muted)}
+.info-row b{color:var(--text)}
+.action-btn{width:100%;padding:14px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;text-transform:uppercase;letter-spacing:1px;cursor:pointer;margin-top:8px;transition:background .2s}
+.action-btn:hover{background:var(--red2)}
+.action-btn.cancel{background:var(--bg3);border:1px solid var(--border);color:var(--muted)}
+.action-btn.green{background:var(--green)}
+.participant-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.participant-row:last-child{border-bottom:none}
+.participant-avatar{width:34px;height:34px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--red);flex-shrink:0;overflow:hidden}
+.participant-avatar img{width:100%;height:100%;object-fit:cover}
+.participant-name{font-size:14px;color:var(--text)}
+.participant-place{margin-left:auto;font-size:13px;font-weight:700}
+.place-win{color:var(--green)}
+.place-lose{color:var(--muted)}
+
+/* ── RATING ── */
+.rating-header{padding:16px;flex-shrink:0}
+.page-title{font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#fff;line-height:1}
+.seg-control{display:flex;background:var(--bg3);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg-btn{flex:1;padding:7px 4px;text-align:center;font-size:13px;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .2s}
+.seg-btn.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.search-box{position:relative;margin-bottom:12px}
+.search-box input{width:100%;padding:10px 12px 10px 36px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none}
+.search-box input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.rating-table{width:100%;border-collapse:collapse}
+.rating-table th{font-size:11px;color:var(--muted);text-align:right;padding:6px 8px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.rating-table th:first-child{text-align:left}
+.rating-table td{padding:10px 8px;border-bottom:1px solid var(--border);font-size:14px;text-align:right}
+.rating-table td:first-child{text-align:left}
+.player-cell{display:flex;align-items:center;gap:10px}
+.place-num{font-size:13px;color:var(--muted);min-width:20px}
+.player-av{width:32px;height:32px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--red);flex-shrink:0;overflow:hidden}
+.player-av img{width:100%;height:100%;object-fit:cover}
+.player-name{font-size:13px;color:var(--text)}
+.rating-val{font-weight:600;color:var(--text)}
+
+/* ── PROFILE ── */
+.profile-top{display:flex;align-items:center;gap:14px;padding:20px 16px 16px;flex-shrink:0}
+.profile-av{width:64px;height:64px;border-radius:50%;background:var(--bg3);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:var(--red);flex-shrink:0;overflow:hidden}
+.profile-av img{width:100%;height:100%;object-fit:cover}
+.profile-name{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff}
+.profile-username{font-size:13px;color:var(--muted)}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 16px;flex-shrink:0}
+.stat-box{background:var(--card);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff}
+.stat-label{font-size:11px;color:var(--muted);margin-top:2px}
+.profile-section{background:var(--card);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;border:1px solid var(--border)}
+.profile-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.profile-row:last-child{border-bottom:none}
+.profile-row-icon{width:32px;height:32px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:16px}
+.profile-row-label{font-size:14px;color:var(--text)}
+.profile-row-value{margin-left:auto;font-size:13px;color:var(--muted);max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toggle{width:44px;height:24px;background:var(--bg3);border-radius:12px;position:relative;cursor:pointer;transition:background .2s;margin-left:auto;flex-shrink:0}
+.toggle.on{background:var(--red)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s}
+.toggle.on::after{transform:translateX(20px)}
+
+/* ── SPINNER ── */
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#222;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:999;border:1px solid var(--border)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── REGISTRATION ── */
+.reg-screen{display:flex;flex-direction:column;height:100vh;overflow-y:auto;background:var(--bg)}
+.reg-screen::-webkit-scrollbar{display:none}
+.reg-header{padding:24px 20px 8px;text-align:center}
+.reg-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px}
+.reg-sub{font-size:13px;color:var(--muted);line-height:1.5}
+.reg-photo-area{display:flex;flex-direction:column;align-items:center;padding:20px 20px 8px}
+.reg-avatar{width:90px;height:90px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;position:relative}
+.reg-avatar img{width:100%;height:100%;object-fit:cover}
+.reg-avatar-placeholder{font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;color:var(--muted)}
+.reg-photo-btns{display:flex;gap:10px}
+.reg-photo-btn{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s}
+.reg-photo-btn:hover,.reg-photo-btn.active{border-color:var(--red);color:var(--red)}
+.reg-photo-hint{font-size:11px;color:var(--muted);text-align:center;padding:8px 24px 4px;line-height:1.5}
+.reg-body{padding:8px 20px 24px;display:flex;flex-direction:column;gap:12px}
+.reg-field-label{font-size:13px;color:var(--text);font-weight:500;margin-bottom:4px}
+.reg-field-label span{color:var(--red)}
+.reg-field-optional{font-size:12px;color:var(--muted);font-weight:400}
+.reg-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-size:15px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s}
+.reg-input:focus{border-color:var(--red)}
+.reg-input::placeholder{color:var(--muted)}
+.reg-email-row{display:flex;gap:8px}
+.reg-email-row .reg-input{flex:1}
+.reg-code-btn{padding:0 14px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--muted);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0}
+.reg-code-btn:hover{border-color:var(--red);color:var(--red)}
+.reg-code-btn:disabled{opacity:.5;cursor:not-allowed}
+.reg-submit{background:var(--red);color:#fff;border:none;border-radius:12px;padding:16px;font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:background .2s;margin-top:4px}
+.reg-submit:hover{background:var(--red2)}
+.reg-submit:disabled{opacity:.6;cursor:not-allowed}
+.reg-error{color:var(--red);font-size:13px;text-align:center;min-height:18px}
+
+/* ── ADMIN ── */
+.admin-badge{display:inline-block;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:1px}
+.admin-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.admin-stat-box{background:var(--card);border-radius:12px;padding:12px;border:1px solid var(--border);text-align:center}
+.admin-stat-val{font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:#fff}
+.admin-stat-label{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--bg2);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;margin-bottom:20px;color:#fff}
+.modal input,.modal select,.modal textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none;margin-bottom:12px}
+.modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--red)}
+.modal select option{background:var(--bg3)}
+.modal label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.modal-btns{display:flex;gap:10px;margin-top:4px}
+.btn-primary{flex:1;padding:14px;background:var(--red);color:#fff;border:none;border-radius:12px;font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;text-transform:uppercase;cursor:pointer}
+.btn-secondary{flex:1;padding:14px;background:var(--bg3);color:var(--muted);border:1px solid var(--border);border-radius:12px;font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;text-transform:uppercase;cursor:pointer}
+.place-select-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.place-select-row:last-child{border-bottom:none}
+.place-select-row select{margin-bottom:0;flex:1}
+
+/* ── PLAYER CARD ── */
+.player-card{background:var(--card);border-radius:var(--radius);margin-bottom:10px;padding:14px;border:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.player-card-info{flex:1;min-width:0}
+.player-card-name{font-weight:600;font-size:14px;color:var(--text)}
+.player-card-sub{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-card-stats{text-align:right;flex-shrink:0}
+.player-card-score{font-size:13px;font-weight:700;color:var(--text)}
+.player-card-meta{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ══ REGISTRATION SCREEN ══════════════════════════════════════════════════ -->
+<div id="screen-register" class="reg-screen" style="display:none">
+  <div class="reg-header">
+    <div style="font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;color:var(--red);letter-spacing:2px;margin-bottom:4px">AK77</div>
+    <div class="reg-title">Создание профиля</div>
+    <div class="reg-sub">Заполните данные для участия в турнирах клуба</div>
+  </div>
+
+  <div class="reg-photo-area">
+    <div class="reg-avatar" id="reg-avatar">
+      <div class="reg-avatar-placeholder" id="reg-avatar-placeholder">?</div>
+    </div>
+    <div class="reg-photo-btns">
+      <button class="reg-photo-btn active" id="btn-photo-tg" onclick="usePhotoFromTelegram()">Из Telegram</button>
+      <button class="reg-photo-btn" id="btn-photo-upload" onclick="triggerPhotoUpload()">Загрузить фото</button>
+      <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
+    </div>
+    <div class="reg-photo-hint" id="reg-photo-hint">
+      Если фото не подтянулось: в настройках Telegram<br>
+      проверьте «Кто видит моё фото» — должно быть<br>
+      «Все». Иначе загрузите вручную или оставьте без фото.
+    </div>
+  </div>
+
+  <div class="reg-body">
+    <div>
+      <div class="reg-field-label">Игровой ник <span>*</span></div>
+      <input class="reg-input" id="reg-nickname" type="text" placeholder="selsapilniy" autocomplete="off">
+    </div>
+
+    <div>
+      <div class="reg-field-label">Email <span class="reg-field-optional">(необязательно)</span></div>
+      <div class="reg-email-row">
+        <input class="reg-input" id="reg-email" type="email" placeholder="name@example.com">
+        <button class="reg-code-btn" id="reg-code-btn" onclick="sendEmailCode()">Получить код<br>подтверждения</button>
+      </div>
+      <input class="reg-input" id="reg-email-code" type="text" placeholder="Код из письма" style="display:none;margin-top:8px">
+    </div>
+
+    <div>
+      <div class="reg-field-label">Дата рождения <span class="reg-field-optional">(необязательно)</span></div>
+      <input class="reg-input" id="reg-birthdate" type="date" placeholder="дд.мм.гггг">
+    </div>
+
+    <div>
+      <div class="reg-field-label">Код пригласившего <span class="reg-field-optional">(необязательно)</span></div>
+      <input class="reg-input" id="reg-referral" type="text" placeholder="Введите код">
+    </div>
+
+    <div class="reg-error" id="reg-error"></div>
+    <button class="reg-submit" id="reg-submit" onclick="submitRegistration()">Начать играть</button>
+  </div>
+</div>
+
+<!-- ══ HOME ═════════════════════════════════════════════════════════════════ -->
+<div id="screen-home" class="screen">
+  <div class="content" id="home-content">
+    <div style="padding-top:4px"></div>
+    <div id="next-tournament-card"><div class="spinner"></div></div>
+    <div class="banner-red" onclick="switchScreen('rating')">
+      <div class="b-tag">Таблица лидеров</div>
+      <div class="b-title">Рейтинг<br>игроков</div>
+    </div>
+    <div class="grid2">
+      <div class="small-card" onclick="switchScreen('tournaments')">
+        <div class="sc-title">Турниры</div>
+        <div class="sc-sub">🏆 Расписание</div>
+      </div>
+      <div class="small-card" onclick="switchScreen('profile')">
+        <div class="sc-title">Профиль</div>
+        <div class="sc-sub">👤 Мои данные</div>
+      </div>
+    </div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Рейтинг</button>
+    <button class="nav-btn" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ══ TOURNAMENTS ══════════════════════════════════════════════════════════ -->
+<div id="screen-tournaments" class="screen">
+  <div class="filter-row">
+    <button class="filter-btn active" id="f-upcoming" onclick="filterTournaments('upcoming')">Текущие</button>
+    <button class="filter-btn" id="f-finished" onclick="filterTournaments('finished')">Завершённые</button>
+  </div>
+  <div class="content">
+    <div style="padding-top:8px"></div>
+    <div id="tours-list"><div class="spinner"></div></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn active" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Рейтинг</button>
+    <button class="nav-btn" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ══ TOURNAMENT DETAIL ════════════════════════════════════════════════════ -->
+<div id="screen-tour-detail" class="screen">
+  <div class="content">
+    <div style="padding-top:8px"></div>
+    <div id="tour-detail-inner"><div class="spinner"></div></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn active" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Рейтинг</button>
+    <button class="nav-btn" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ══ RATING ════════════════════════════════════════════════════════════════ -->
+<div id="screen-rating" class="screen">
+  <div class="rating-header">
+    <div class="page-title" style="padding:16px 0 12px">Рейтинг</div>
+    <div class="seg-control">
+      <div class="seg-btn active" id="seg-global" onclick="switchRating('global')">По рейтингу</div>
+      <div class="seg-btn" id="seg-season" onclick="switchRating('wins')">По победам</div>
+    </div>
+    <div class="search-box">
+      <span class="search-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <input type="text" placeholder="Поиск по нику..." id="rating-search" oninput="filterRating(this.value)">
+    </div>
+  </div>
+  <div class="content">
+    <table class="rating-table">
+      <thead><tr><th>Игрок</th><th>Игр</th><th>Побед</th><th>Очки</th></tr></thead>
+      <tbody id="rating-rows"><tr><td colspan="4"><div class="spinner"></div></td></tr></tbody>
+    </table>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn active" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Рейтинг</button>
+    <button class="nav-btn" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ══ PROFILE ═══════════════════════════════════════════════════════════════ -->
+<div id="screen-profile" class="screen">
+  <div class="profile-top">
+    <div class="profile-av" id="profile-av"><span id="profile-av-letter">?</span></div>
+    <div>
+      <div class="profile-name" id="profile-name">—</div>
+      <div class="profile-username" id="profile-username"></div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="stat-games">0</div><div class="stat-label">Игр</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-wins">0</div><div class="stat-label">Побед</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-score">0</div><div class="stat-label">Рейтинг</div></div>
+  </div>
+  <div class="content" id="profile-content">
+    <div class="profile-section">
+      <div class="profile-row" onclick="switchScreen('my-games')">
+        <div class="profile-row-icon">🃏</div>
+        <div class="profile-row-label">История игр</div>
+        <div class="profile-row-value" id="games-count">›</div>
+      </div>
+      <div class="profile-row">
+        <div class="profile-row-icon">🎮</div>
+        <div class="profile-row-label">Игровой ник</div>
+        <div class="profile-row-value" id="profile-nickname">—</div>
+      </div>
+      <div class="profile-row">
+        <div class="profile-row-icon">📱</div>
+        <div class="profile-row-label">Telegram</div>
+        <div class="profile-row-value" id="profile-tg">—</div>
+      </div>
+      <div class="profile-row" id="profile-email-row">
+        <div class="profile-row-icon">📧</div>
+        <div class="profile-row-label">Email</div>
+        <div class="profile-row-value" id="profile-email">—</div>
+      </div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-row" onclick="logout()" style="cursor:pointer">
+        <div class="profile-row-icon">🚪</div>
+        <div class="profile-row-label" style="color:var(--red)">Выйти и изменить профиль</div>
+      </div>
+    </div>
+    <div id="admin-panel-block"></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" onclick="switchScreen('home')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Главная</button>
+    <button class="nav-btn" onclick="switchScreen('tournaments')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 3H7L3 9l9 13 9-13-4-6z"/></svg>Турниры</button>
+    <button class="nav-btn" onclick="switchScreen('rating')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Рейтинг</button>
+    <button class="nav-btn active" onclick="switchScreen('profile')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </nav>
+</div>
+
+<!-- ══ MY GAMES ═══════════════════════════════════════════════════════════════ -->
+<div id="screen-my-games" class="screen">
+  <div style="padding:16px 16px 0;flex-shrink:0;display:flex;align-items:center;gap:12px">
+    <button class="back-btn" style="margin-bottom:0" onclick="switchScreen('profile')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Назад
+    </button>
+    <div class="page-title" style="font-size:22px">Мои игры</div>
+  </div>
+  <div class="content">
+    <div style="padding-top:12px"></div>
+    <div id="my-games-list"><div class="spinner"></div></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+</div>
+
+<!-- ══ ADMIN: PLAYERS ═══════════════════════════════════════════════════════ -->
+<div id="screen-players" class="screen">
+  <div style="padding:16px 16px 0;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <button class="back-btn" style="margin-bottom:0" onclick="switchScreen('profile')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Назад
+      </button>
+      <div class="page-title" style="font-size:22px">Игроки</div>
+    </div>
+    <div class="search-box" style="margin-bottom:0">
+      <span class="search-icon"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <input type="text" placeholder="Поиск..." id="players-search" oninput="searchPlayers(this.value)">
+    </div>
+  </div>
+  <div class="content">
+    <div style="padding-top:12px"></div>
+    <div id="players-list"><div class="spinner"></div></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+</div>
+
+<!-- ══ ADMIN: BOOKINGS ══════════════════════════════════════════════════════ -->
+<div id="screen-bookings" class="screen">
+  <div style="padding:16px 16px 0;flex-shrink:0;display:flex;align-items:center;gap:12px">
+    <button class="back-btn" style="margin-bottom:0" onclick="switchScreen('profile')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Назад
+    </button>
+    <div class="page-title" style="font-size:22px">Заявки</div>
+  </div>
+  <div class="content">
+    <div style="padding-top:12px"></div>
+    <div id="bookings-list"><div class="spinner"></div></div>
+    <div style="padding-bottom:16px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ MODAL: CREATE TOURNAMENT ═════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-create-tour">
+  <div class="modal">
+    <div class="modal-title">Новый турнир</div>
+    <label>Название</label>
+    <input id="ct-title" type="text" placeholder="Ночной турнир #5">
+    <label>Дата и время</label>
+    <input id="ct-date" type="datetime-local">
+    <label>Место проведения</label>
+    <input id="ct-location" type="text" placeholder="Адрес клуба">
+    <label>Макс. игроков</label>
+    <input id="ct-maxplayers" type="number" value="20" min="2" max="200">
+    <label>Бай-ин (₽)</label>
+    <input id="ct-buyin" type="number" value="0" min="0">
+    <label>Призовой фонд</label>
+    <input id="ct-prize" type="text" placeholder="50 000 ₽">
+    <label>Описание</label>
+    <textarea id="ct-desc" rows="3" placeholder="Правила, информация..."></textarea>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('modal-create-tour')">Отмена</button>
+      <button class="btn-primary" onclick="createTournament()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: FINISH TOURNAMENT ═════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-finish-tour">
+  <div class="modal">
+    <div class="modal-title">Завершить турнир</div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Укажите место для каждого участника</p>
+    <div id="finish-places-list"></div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn-secondary" onclick="closeModal('modal-finish-tour')">Отмена</button>
+      <button class="btn-primary" onclick="finishTournament()">Сохранить результаты</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ INIT ══════════════════════════════════════════════════════════════════
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0e0e0e'); }
+
+const API = '__API_BASE_URL__';
+const TG_USER = tg?.initDataUnsafe?.user || {};
+const INIT_DATA = tg?.initData || '';
+
+let currentProfile = null;
+let allLeaderboard = [];
+let ratingMode = 'global';
+let currentFilter = 'upcoming';
+let finishingTourId = null;
+let finishingParticipants = [];
+let regPhotoUrl = TG_USER.photo_url || '';
+
+// ══ API HELPERS ══════════════════════════════════════════════════════════
+async function apiGet(path) {
+  const headers = { 'X-Telegram-Init-Data': INIT_DATA };
+  const res = await fetch(API + path, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Ошибка сервера');
+  }
+  return res.json();
+}
+
+async function apiPost(path, body = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Telegram-Init-Data': INIT_DATA,
+  };
+  const res = await fetch(API + path, { method: 'POST', headers, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Ошибка сервера');
+  }
+  return res.json();
+}
+
+async function apiPut(path, body = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Telegram-Init-Data': INIT_DATA,
+  };
+  const res = await fetch(API + path, { method: 'PUT', headers, body: JSON.stringify(body) });
+  return res.json();
+}
+
+async function apiDelete(path) {
+  const headers = { 'X-Telegram-Init-Data': INIT_DATA };
+  const res = await fetch(API + path, { method: 'DELETE', headers });
+  return res.json();
+}
+
+// ══ UTILS ════════════════════════════════════════════════════════════════
+function fmtDt(s) {
+  if (!s) return '';
+  try {
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  } catch { return s; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function avatarHtml(name, photoUrl, size = 34) {
+  if (photoUrl) {
+    return `<img src="${photoUrl}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-size:${Math.round(size*0.4)}px\\'>${(name||'?')[0].toUpperCase()}</span>'">`;
+  }
+  return `<span style="font-size:${Math.round(size*0.4)}px">${(name||'?')[0].toUpperCase()}</span>`;
+}
+
+// ══ REGISTRATION ═════════════════════════════════════════════════════════
+
+function usePhotoFromTelegram() {
+  regPhotoUrl = TG_USER.photo_url || '';
+  document.getElementById('btn-photo-tg').classList.add('active');
+  document.getElementById('btn-photo-upload').classList.remove('active');
+  renderRegAvatar();
+}
+
+function triggerPhotoUpload() {
+  document.getElementById('photo-file-input').click();
+}
+
+function handlePhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  // Preview only (actual upload would need multipart endpoint)
+  const reader = new FileReader();
+  reader.onload = e => {
+    regPhotoUrl = e.target.result;
+    document.getElementById('btn-photo-upload').classList.add('active');
+    document.getElementById('btn-photo-tg').classList.remove('active');
+    renderRegAvatar();
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderRegAvatar() {
+  const av = document.getElementById('reg-avatar');
+  const hint = document.getElementById('reg-photo-hint');
+  if (regPhotoUrl) {
+    av.innerHTML = `<img src="${regPhotoUrl}" alt="" onerror="this.style.display='none'">`;
+    hint.style.display = 'none';
+  } else {
+    const letter = (TG_USER.first_name || '?')[0].toUpperCase();
+    av.innerHTML = `<div class="reg-avatar-placeholder">${letter}</div>`;
+    hint.style.display = '';
+  }
+}
+
+let emailCodeSent = false;
+let emailCodeTimer = 0;
+
+function sendEmailCode() {
+  const email = document.getElementById('reg-email').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Введите корректный email');
+    return;
+  }
+  const btn = document.getElementById('reg-code-btn');
+  btn.disabled = true;
+  emailCodeSent = true;
+  document.getElementById('reg-email-code').style.display = '';
+  showToast('Код отправлен на ' + email);
+  // Countdown
+  let secs = 60;
+  const tick = setInterval(() => {
+    secs--;
+    btn.textContent = `Повторить (${secs}с)`;
+    if (secs <= 0) {
+      clearInterval(tick);
+      btn.disabled = false;
+      btn.textContent = 'Получить код\nподтверждения';
+    }
+  }, 1000);
+}
+
+async function submitRegistration() {
+  const nickname = document.getElementById('reg-nickname').value.trim();
+  const errEl = document.getElementById('reg-error');
+  errEl.textContent = '';
+
+  if (!nickname) { errEl.textContent = 'Введите игровой ник'; return; }
+  if (nickname.length < 2) { errEl.textContent = 'Ник слишком короткий'; return; }
+
+  const email = document.getElementById('reg-email').value.trim() || null;
+  const birthDate = document.getElementById('reg-birthdate').value || null;
+  const referral = document.getElementById('reg-referral').value.trim() || null;
+
+  const btn = document.getElementById('reg-submit');
+  btn.disabled = true;
+  btn.textContent = 'Сохранение...';
+
+  try {
+    const data = await apiPost('/api/profile/complete', {
+      game_nickname: nickname,
+      email,
+      birth_date: birthDate,
+      referral_code: referral,
+      photo_url: (regPhotoUrl && regPhotoUrl.startsWith('http')) ? regPhotoUrl : null,
+    });
+    currentProfile = data;
+    showApp();
+  } catch (e) {
+    errEl.textContent = e.message || 'Ошибка сохранения';
+    btn.disabled = false;
+    btn.textContent = 'Начать играть';
+  }
+}
+
+function showApp() {
+  document.getElementById('screen-register').style.display = 'none';
+  switchScreen('home');
+}
+
+function logout() {
+  currentProfile = null;
+  localStorage.removeItem('ak77_profile_complete');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-register').style.display = 'flex';
+  initRegistrationForm();
+}
+
+// ══ SCREENS ══════════════════════════════════════════════════════════════
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+
+  // Update nav active state
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navMap = { home:0, tournaments:1, 'tour-detail':1, rating:2, profile:3 };
+  if (navMap[name] !== undefined) {
+    const navBtns = document.querySelectorAll('.nav-btn');
+    if (navBtns[navMap[name]]) navBtns[navMap[name]].classList.add('active');
+  }
+
+  if (name === 'home')         loadHome();
+  if (name === 'tournaments')  loadTournaments();
+  if (name === 'rating')       loadRating();
+  if (name === 'profile')      loadProfile();
+  if (name === 'players')      loadPlayersList();
+  if (name === 'bookings')     loadBookings();
+  if (name === 'my-games')     loadMyGames();
+}
+
+// ══ HOME ═════════════════════════════════════════════════════════════════
+async function loadHome() {
+  const el = document.getElementById('next-tournament-card');
+  try {
+    const tours = await apiGet('/api/tournaments?status=upcoming');
+    if (!tours.length) {
+      el.innerHTML = '<div class="next-card"><div class="next-label">Ближайший турнир</div><div style="color:var(--muted);font-size:14px">Турниров пока нет</div></div>';
+      return;
+    }
+    const t = tours[0];
+    el.innerHTML = `<div class="next-card" onclick="openTournament(${t.id})">
+      <div class="next-label">Ближайший турнир</div>
+      <div class="next-title">${t.title}</div>
+      <div class="next-meta">
+        <span>👥 <b>${t.registered_count}/${t.max_players}</b></span>
+        <span>🕐 <b>${fmtDt(t.start_time)}</b></span>
+        ${t.buy_in ? `<span>💰 <b>${t.buy_in}₽</b></span>` : ''}
+      </div>
+    </div>`;
+  } catch {
+    el.innerHTML = '<div class="next-card"><div class="next-label">Ближайший турнир</div><div style="color:var(--muted);font-size:14px">Нет данных</div></div>';
+  }
+}
+
+// ══ TOURNAMENTS ══════════════════════════════════════════════════════════
+async function loadTournaments() {
+  const el = document.getElementById('tours-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const tours = await apiGet(`/api/tournaments?status=${currentFilter}`);
+    if (!tours.length) {
+      el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:24px">Турниров нет</p>';
+      return;
+    }
+    el.innerHTML = tours.map(t => `
+      <div class="tour-card" onclick="openTournament(${t.id})">
+        <div class="tour-card-inner">
+          <div class="tour-title">${t.title}</div>
+          <div class="tour-meta">
+            <span>👥 <b>${t.registered_count}/${t.max_players}</b></span>
+            <span>🕐 <b>${fmtDt(t.start_time)}</b></span>
+            ${t.location ? `<span>📍 <b>${t.location}</b></span>` : ''}
+            ${t.buy_in ? `<span>💰 <b>${t.buy_in}₽</b></span>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--muted);text-align:center;padding:24px">${e.message}</p>`;
+  }
+}
+
+function filterTournaments(f) {
+  currentFilter = f;
+  document.getElementById('f-upcoming').classList.toggle('active', f === 'upcoming');
+  document.getElementById('f-finished').classList.toggle('active', f === 'finished');
+  loadTournaments();
+}
+
+async function openTournament(id) {
+  switchScreen('tour-detail');
+  const el = document.getElementById('tour-detail-inner');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const [t, regData] = await Promise.all([
+      apiGet(`/api/tournament/${id}`),
+      apiGet(`/api/my-registration/${id}`),
+    ]);
+    const isReg = regData.registered;
+    const isAdmin = currentProfile?.is_admin;
+
+    el.innerHTML = `
+      <button class="back-btn" onclick="switchScreen('tournaments')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Назад
+      </button>
+      <div class="tour-banner"><div class="tour-banner-title">${t.title}</div></div>
+      <div class="tabs" id="detail-tabs">
+        <div class="tab active" onclick="showTab('info')">О турнире</div>
+        <div class="tab" onclick="showTab('participants',${id})">Участники (${t.registered_count})</div>
+      </div>
+      <div id="tab-info">
+        ${t.location ? `<div class="info-row">📍 <b>${t.location}</b></div>` : ''}
+        <div class="info-row">🕐 <b>${fmtDt(t.start_time)}</b></div>
+        <div class="info-row">👥 Мест: <b>${t.registered_count}/${t.max_players}</b></div>
+        ${t.buy_in ? `<div class="info-row">💰 Бай-ин: <b>${t.buy_in}₽</b></div>` : ''}
+        ${t.prize_pool ? `<div class="info-row">🏆 Призовой фонд: <b>${t.prize_pool}</b></div>` : ''}
+        ${t.description ? `<div class="info-row" style="display:block;line-height:1.6;margin-top:8px">${t.description}</div>` : ''}
+        ${t.status === 'upcoming' ? `
+          <button class="action-btn ${isReg ? 'cancel' : ''}" id="reg-btn-${id}" onclick="toggleReg(${id}, ${isReg})">
+            ${isReg ? '❌ Отменить регистрацию' : '✅ Зарегистрироваться'}
+          </button>` : '<div style="color:var(--muted);text-align:center;padding:16px;font-size:14px">Турнир завершён</div>'}
+        ${isAdmin && t.status === 'upcoming' ? `
+          <button class="action-btn green" style="margin-top:8px" onclick="openFinishModal(${id})">
+            🏁 Завершить и записать результаты
+          </button>` : ''}
+        ${isAdmin ? `<button class="action-btn cancel" style="margin-top:8px" onclick="adminDeleteTournament(${id})">🗑 Удалить турнир</button>` : ''}
+      </div>
+      <div id="tab-participants" style="display:none"><div class="spinner"></div></div>`;
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--muted);padding:24px">${e.message}</p>`;
+  }
+}
+
+function showTab(tab, tourId) {
+  document.querySelectorAll('#detail-tabs .tab').forEach((t,i) => t.classList.toggle('active', i === (tab==='info'?0:1)));
+  document.getElementById('tab-info').style.display = tab==='info' ? '' : 'none';
+  document.getElementById('tab-participants').style.display = tab==='participants' ? '' : 'none';
+  if (tab === 'participants' && tourId) loadParticipants(tourId);
+}
+
+async function loadParticipants(id) {
+  const el = document.getElementById('tab-participants');
+  try {
+    const participants = await apiGet(`/api/tournament/${id}/participants`);
+    if (!participants.length) {
+      el.innerHTML = '<p style="color:var(--muted);padding:16px 0">Нет участников</p>';
+      return;
+    }
+    el.innerHTML = participants.map((p, i) => `
+      <div class="participant-row">
+        <div class="participant-avatar">${avatarHtml(p.game_nickname || p.full_name, p.photo_url)}</div>
+        <div class="participant-name">${p.game_nickname || p.full_name}</div>
+      </div>`).join('');
+  } catch { el.innerHTML = '<p style="color:var(--muted);padding:16px 0">Ошибка загрузки</p>'; }
+}
+
+async function toggleReg(id, currentlyRegistered) {
+  const btn = document.getElementById(`reg-btn-${id}`);
+  if (btn) btn.disabled = true;
+  try {
+    if (currentlyRegistered) {
+      await apiPost(`/api/unregister/${id}`);
+      showToast('Регистрация отменена');
+    } else {
+      const res = await apiPost(`/api/register/${id}`);
+      if (!res.ok) {
+        showToast(res.reason === 'full' ? 'Мест нет' : res.reason === 'profile_incomplete' ? 'Заполните профиль' : 'Ошибка');
+        if (btn) btn.disabled = false;
+        return;
+      }
+      showToast('✅ Вы зарегистрированы!');
+    }
+    await openTournament(id);
+  } catch (e) {
+    showToast(e.message);
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ══ FINISH TOURNAMENT ════════════════════════════════════════════════════
+async function openFinishModal(id) {
+  finishingTourId = id;
+  try {
+    const participants = await apiGet(`/api/tournament/${id}/participants`);
+    finishingParticipants = participants;
+    const list = document.getElementById('finish-places-list');
+    if (!participants.length) { showToast('Нет участников'); return; }
+    list.innerHTML = participants.map(p => `
+      <div class="place-select-row">
+        <div class="participant-avatar">${avatarHtml(p.game_nickname || p.full_name, p.photo_url)}</div>
+        <div style="flex:1;font-size:14px">${p.game_nickname || p.full_name}</div>
+        <select data-player-id="${p.id}">
+          <option value="">— место —</option>
+          ${Array.from({length: participants.length}, (_,i) => `<option value="${i+1}">${i+1} место</option>`).join('')}
+        </select>
+      </div>`).join('');
+    openModal('modal-finish-tour');
+  } catch (e) { showToast(e.message); }
+}
+
+async function finishTournament() {
+  const selects = document.querySelectorAll('#finish-places-list select');
+  const results = [];
+  selects.forEach(s => {
+    if (s.value) results.push({ player_id: parseInt(s.dataset.playerId), place: parseInt(s.value) });
+  });
+  if (!results.length) { showToast('Укажите хотя бы одно место'); return; }
+  try {
+    await apiPost(`/api/admin/tournament/${finishingTourId}/finish`, { results });
+    closeModal('modal-finish-tour');
+    showToast('Результаты сохранены!');
+    switchScreen('tournaments');
+  } catch (e) { showToast(e.message); }
+}
+
+async function adminDeleteTournament(id) {
+  if (!confirm('Удалить турнир? Это действие нельзя отменить.')) return;
+  try {
+    await apiDelete(`/api/admin/tournament/${id}`);
+    showToast('Турнир удалён');
+    switchScreen('tournaments');
+  } catch (e) { showToast(e.message); }
+}
+
+// ══ CREATE TOURNAMENT ════════════════════════════════════════════════════
+async function createTournament() {
+  const title = document.getElementById('ct-title').value.trim();
+  const date  = document.getElementById('ct-date').value;
+  if (!title || !date) { showToast('Заполните название и дату'); return; }
+  try {
+    await apiPost('/api/admin/tournament', {
+      title,
+      start_time: date,
+      location: document.getElementById('ct-location').value.trim(),
+      max_players: parseInt(document.getElementById('ct-maxplayers').value) || 20,
+      buy_in: parseInt(document.getElementById('ct-buyin').value) || 0,
+      prize_pool: document.getElementById('ct-prize').value.trim() || null,
+      description: document.getElementById('ct-desc').value.trim() || null,
+    });
+    closeModal('modal-create-tour');
+    ['ct-title','ct-date','ct-location','ct-desc','ct-prize'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ct-maxplayers').value = '20';
+    document.getElementById('ct-buyin').value = '0';
+    showToast('Турнир создан!');
+    loadTournaments();
+  } catch (e) { showToast(e.message); }
+}
+
+// ══ RATING ═══════════════════════════════════════════════════════════════
+async function loadRating() {
+  const tbody = document.getElementById('rating-rows');
+  tbody.innerHTML = '<tr><td colspan="4"><div class="spinner"></div></td></tr>';
+  try {
+    allLeaderboard = await apiGet('/api/leaderboard');
+    renderRating(allLeaderboard);
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Нет данных</td></tr>';
+  }
+}
+
+function renderRating(players) {
+  const tbody = document.getElementById('rating-rows');
+  if (!players.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Нет игроков</td></tr>';
+    return;
+  }
+  const sorted = ratingMode === 'global'
+    ? [...players].sort((a,b) => (b.rating||0) - (a.rating||0))
+    : [...players].sort((a,b) => (b.wins_count||0) - (a.wins_count||0));
+
+  tbody.innerHTML = sorted.map((p, i) => {
+    const medal = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : '';
+    const name = p.game_nickname || p.full_name || p.username || '—';
+    const score = ratingMode === 'global' ? Math.round(p.rating || 0) : (p.wins_count || 0);
+    return `<tr>
+      <td><div class="player-cell">
+        <span class="place-num">${medal || i+1}</span>
+        <div class="player-av">${avatarHtml(name, p.photo_url, 32)}</div>
+        <span class="player-name">${name}</span>
+      </div></td>
+      <td>${p.games_count || 0}</td>
+      <td>${p.wins_count || 0}</td>
+      <td class="rating-val">${score}</td>
+    </tr>`;
+  }).join('');
+}
+
+function switchRating(mode) {
+  ratingMode = mode;
+  document.getElementById('seg-global').classList.toggle('active', mode==='global');
+  document.getElementById('seg-season').classList.toggle('active', mode==='wins');
+  renderRating(allLeaderboard);
+}
+
+function filterRating(q) {
+  const f = q ? allLeaderboard.filter(p => {
+    const name = (p.game_nickname || p.full_name || '').toLowerCase();
+    return name.includes(q.toLowerCase());
+  }) : allLeaderboard;
+  renderRating(f);
+}
+
+// ══ PROFILE ══════════════════════════════════════════════════════════════
+async function loadProfile() {
+  if (!currentProfile) {
+    try { currentProfile = await apiGet('/api/my-profile'); } catch { return; }
+  }
+  const p = currentProfile;
+  const name = p.game_nickname || p.full_name || TG_USER.first_name || '—';
+  const photo = p.photo_url || p.tg_photo_url || TG_USER.photo_url || '';
+
+  const avEl = document.getElementById('profile-av');
+  if (photo) {
+    avEl.innerHTML = `<img src="${photo}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-size:24px\\'>${name[0].toUpperCase()}</span>'">`;
+  } else {
+    avEl.innerHTML = `<span id="profile-av-letter">${name[0].toUpperCase()}</span>`;
+  }
+
+  document.getElementById('profile-name').textContent = name;
+  document.getElementById('profile-username').textContent =
+    (p.is_admin ? '⭐ Администратор · ' : '') +
+    (p.tg_username || TG_USER.username ? '@' + (p.tg_username || TG_USER.username) : p.full_name || '');
+
+  document.getElementById('profile-nickname').textContent = p.game_nickname || '—';
+  document.getElementById('profile-tg').textContent =
+    '@' + (p.username || TG_USER.username || '—');
+  document.getElementById('profile-email').textContent = p.email || '—';
+  document.getElementById('stat-games').textContent = p.games_count || 0;
+  document.getElementById('stat-wins').textContent = p.wins_count || 0;
+  document.getElementById('stat-score').textContent = Math.round(p.rating || 0);
+
+  // Admin panel
+  const adminBlock = document.getElementById('admin-panel-block');
+  if (p.is_admin) {
+    adminBlock.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-top:4px">
+        <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:var(--red);text-transform:uppercase">Панель администратора</div>
+        <span class="admin-badge">Admin</span>
+      </div>
+      <div class="admin-stat-grid" id="admin-stats-grid">
+        <div class="admin-stat-box"><div class="admin-stat-val" id="astat-players">—</div><div class="admin-stat-label">Игроков</div></div>
+        <div class="admin-stat-box"><div class="admin-stat-val" id="astat-tours">—</div><div class="admin-stat-label">Турниров</div></div>
+        <div class="admin-stat-box"><div class="admin-stat-val" id="astat-regs">—</div><div class="admin-stat-label">Регистраций</div></div>
+        <div class="admin-stat-box"><div class="admin-stat-val" id="astat-bookings">—</div><div class="admin-stat-label">Заявок</div></div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-row" onclick="openModal('modal-create-tour')">
+          <div class="profile-row-icon">➕</div>
+          <div class="profile-row-label">Создать турнир</div>
+          <div class="profile-row-value">›</div>
+        </div>
+        <div class="profile-row" onclick="switchScreen('players')">
+          <div class="profile-row-icon">👥</div>
+          <div class="profile-row-label">Все игроки</div>
+          <div class="profile-row-value" id="admin-players-count">›</div>
+        </div>
+        <div class="profile-row" onclick="switchScreen('tournaments');filterTournaments('upcoming')">
+          <div class="profile-row-icon">🏆</div>
+          <div class="profile-row-label">Управление турнирами</div>
+          <div class="profile-row-value">›</div>
+        </div>
+        <div class="profile-row" onclick="switchScreen('bookings')">
+          <div class="profile-row-icon">📋</div>
+          <div class="profile-row-label">Заявки на стол</div>
+          <div class="profile-row-value" id="admin-bookings-count">›</div>
+        </div>
+      </div>`;
+    loadAdminStats();
+  } else {
+    adminBlock.innerHTML = '';
+  }
+}
+
+async function loadAdminStats() {
+  try {
+    const s = await apiGet('/api/admin/stats');
+    const el = id => document.getElementById(id);
+    if (el('astat-players')) el('astat-players').textContent = s.total_players;
+    if (el('astat-tours'))   el('astat-tours').textContent = s.upcoming_tournaments;
+    if (el('astat-regs'))    el('astat-regs').textContent = s.total_registrations;
+    if (el('astat-bookings'))el('astat-bookings').textContent = s.pending_bookings;
+    if (el('admin-players-count')) el('admin-players-count').textContent = s.total_players;
+    if (el('admin-bookings-count')) el('admin-bookings-count').textContent = s.pending_bookings;
+  } catch {}
+}
+
+// ══ MY GAMES ═════════════════════════════════════════════════════════════
+async function loadMyGames() {
+  const el = document.getElementById('my-games-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const games = await apiGet('/api/my-tournaments');
+    if (!games.length) {
+      el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:24px">Игр пока нет</p>';
+      return;
+    }
+    el.innerHTML = games.map(g => `
+      <div class="card">
+        <div style="font-weight:600;font-size:15px;margin-bottom:6px">${g.title}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">${fmtDt(g.start_time)}</div>
+        <div style="display:flex;gap:12px">
+          ${g.place ? `<div style="font-size:13px">Место: <b style="color:${g.place===1?'var(--green)':'var(--text)'}">#${g.place}</b></div>` : ''}
+          ${g.knockouts ? `<div style="font-size:13px">Нокауты: <b>${g.knockouts}</b></div>` : ''}
+          ${g.rating_delta ? `<div style="font-size:13px">+${Math.round(g.rating_delta)} очков</div>` : ''}
+          <div style="font-size:13px;color:var(--muted);margin-left:auto">${g.reg_status === 'registered' ? '✅ Зарегистрирован' : g.reg_status === 'finished' ? '🏁 Завершён' : g.reg_status}</div>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--muted);text-align:center;padding:24px">${e.message}</p>`;
+  }
+}
+
+// ══ ADMIN: PLAYERS ════════════════════════════════════════════════════════
+async function loadPlayersList() {
+  const el = document.getElementById('players-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const players = await apiGet('/api/admin/players');
+    renderPlayersList(players);
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--muted);text-align:center;padding:24px">${e.message}</p>`;
+  }
+}
+
+function renderPlayersList(players) {
+  const el = document.getElementById('players-list');
+  if (!players.length) {
+    el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:24px">Нет игроков</p>';
+    return;
+  }
+  el.innerHTML = players.map(p => {
+    const name = p.game_nickname || p.full_name;
+    const sub = [p.username ? '@'+p.username : '', p.email].filter(Boolean).join(' · ');
+    return `<div class="player-card">
+      <div class="participant-avatar" style="width:42px;height:42px;font-size:16px">${avatarHtml(name, p.photo_url, 42)}</div>
+      <div class="player-card-info">
+        <div class="player-card-name">${name}</div>
+        <div class="player-card-sub">${sub || ('ID: ' + p.tg_id)}</div>
+      </div>
+      <div class="player-card-stats">
+        <div class="player-card-score">${Math.round(p.rating || 0)} очк.</div>
+        <div class="player-card-meta">${p.games_count || 0} игр · ${p.wins_count || 0} побед</div>
+        <div class="player-card-meta" style="font-size:10px;margin-top:2px">${p.profile_complete ? '✅' : '⏳ не завершил'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let playersSearchTimeout = null;
+function searchPlayers(q) {
+  clearTimeout(playersSearchTimeout);
+  playersSearchTimeout = setTimeout(async () => {
+    const el = document.getElementById('players-list');
+    el.innerHTML = '<div class="spinner"></div>';
+    try {
+      const players = await apiGet(`/api/admin/players?q=${encodeURIComponent(q)}`);
+      renderPlayersList(players);
+    } catch {}
+  }, 400);
+}
+
+// ══ ADMIN: BOOKINGS ══════════════════════════════════════════════════════
+async function loadBookings() {
+  const el = document.getElementById('bookings-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const bookings = await apiGet('/api/admin/bookings?status=pending');
+    if (!bookings.length) {
+      el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:24px">Новых заявок нет</p>';
+      return;
+    }
+    el.innerHTML = bookings.map(b => `
+      <div class="card">
+        <div style="font-weight:600;font-size:15px">${b.game_nickname || b.full_name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${b.username ? '@'+b.username : 'ID:'+b.tg_id}</div>
+        <div style="margin-top:10px;font-size:14px">
+          📅 ${b.date} в ${b.time_slot}<br>
+          👥 Мест: ${b.seats}
+          ${b.note ? `<br>📝 ${b.note}` : ''}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button style="flex:1;padding:10px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer" onclick="setBookingStatus(${b.id},'confirmed')">✅ Подтвердить</button>
+          <button style="flex:1;padding:10px;background:var(--bg3);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer" onclick="setBookingStatus(${b.id},'rejected')">❌ Отклонить</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--muted);text-align:center;padding:24px">${e.message}</p>`;
+  }
+}
+
+async function setBookingStatus(id, status) {
+  try {
+    await apiPost(`/api/admin/booking/${id}/status`, { status });
+    showToast(status === 'confirmed' ? 'Заявка подтверждена' : 'Заявка отклонена');
+    loadBookings();
+  } catch (e) { showToast(e.message); }
+}
+
+// ══ REGISTRATION FORM INIT ════════════════════════════════════════════════
+function initRegistrationForm() {
+  // Pre-fill nickname from Telegram username
+  const nicknameInput = document.getElementById('reg-nickname');
+  if (nicknameInput && !nicknameInput.value) {
+    nicknameInput.value = TG_USER.username || TG_USER.first_name || '';
+  }
+  // Try to load Telegram photo
+  regPhotoUrl = TG_USER.photo_url || '';
+  renderRegAvatar();
+}
+
+// ══ APP STARTUP ══════════════════════════════════════════════════════════
+async function init() {
+  // If no Telegram context, show dev warning but continue
+  if (!INIT_DATA) {
+    console.warn('No Telegram initData — running in preview mode');
+  }
+
+  try {
+    currentProfile = await apiGet('/api/my-profile');
+    if (!currentProfile.profile_complete) {
+      // Show registration
+      document.getElementById('screen-home').classList.remove('active');
+      document.getElementById('screen-register').style.display = 'flex';
+      initRegistrationForm();
+    } else {
+      showApp();
+    }
+  } catch (e) {
+    // Likely auth error — show registration
+    document.getElementById('screen-home').classList.remove('active');
+    document.getElementById('screen-register').style.display = 'flex';
+    initRegistrationForm();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
