@@ -1,18 +1,45 @@
-import aiosqlite
+"""
+Async PostgreSQL database layer (asyncpg).
+Connection string is read from DATABASE_URL env-var (set on Render).
+"""
+import os
+import asyncpg
 from typing import Optional, List, Dict
-from pathlib import Path
 
-DB_PATH = Path("data/poker_bot.db")
+_pool: Optional[asyncpg.Pool] = None
 
+
+def _row(record) -> Dict:
+    """Convert asyncpg.Record → plain dict."""
+    return dict(record) if record else {}
+
+
+async def _get_pool() -> asyncpg.Pool:
+    global _pool
+    if _pool is None:
+        raise RuntimeError("DB pool not initialised — call init_db() first")
+    return _pool
+
+
+# ─── INIT ────────────────────────────────────────────────────────────────────
 
 async def init_db():
-    DB_PATH.parent.mkdir(exist_ok=True)
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        await db.executescript("""
+    global _pool
+    url = os.environ.get("DATABASE_URL", "")
+    if not url:
+        raise ValueError("DATABASE_URL environment variable is not set")
+
+    # Render gives postgres:// — asyncpg needs postgresql://
+    url = url.replace("postgres://", "postgresql://", 1)
+
+    _pool = await asyncpg.create_pool(url, min_size=1, max_size=5,
+                                      ssl="require")
+
+    async with _pool.acquire() as c:
+        await c.execute("""
             CREATE TABLE IF NOT EXISTS players (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                tg_id            INTEGER UNIQUE NOT NULL,
+                id               SERIAL PRIMARY KEY,
+                tg_id            BIGINT  UNIQUE NOT NULL,
                 username         TEXT    DEFAULT '',
                 tg_name          TEXT    DEFAULT '',
                 fio              TEXT    DEFAULT '',
@@ -25,34 +52,37 @@ async def init_db():
                 wins_count       INTEGER DEFAULT 0,
                 best_place       INTEGER DEFAULT 0,
                 profile_complete INTEGER DEFAULT 0,
-                created_at       TEXT    DEFAULT (datetime('now'))
-            );
-
+                created_at       TEXT    DEFAULT (NOW()::TEXT)
+            )
+        """)
+        await c.execute("""
             CREATE TABLE IF NOT EXISTS tournaments (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                title        TEXT NOT NULL,
-                description  TEXT DEFAULT '',
-                location     TEXT DEFAULT '',
-                city         TEXT DEFAULT 'Москва',
-                start_time   TEXT NOT NULL,
+                id           SERIAL PRIMARY KEY,
+                title        TEXT    NOT NULL,
+                description  TEXT    DEFAULT '',
+                location     TEXT    DEFAULT '',
+                city         TEXT    DEFAULT 'Москва',
+                start_time   TEXT    NOT NULL,
                 max_players  INTEGER DEFAULT 100,
                 buy_in       INTEGER DEFAULT 0,
                 prize_pool   TEXT    DEFAULT '',
                 status       TEXT    DEFAULT 'upcoming',
-                created_at   TEXT    DEFAULT (datetime('now'))
-            );
-
+                created_at   TEXT    DEFAULT (NOW()::TEXT)
+            )
+        """)
+        await c.execute("""
             CREATE TABLE IF NOT EXISTS registrations (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                id            SERIAL PRIMARY KEY,
                 tournament_id INTEGER NOT NULL REFERENCES tournaments(id),
                 player_id     INTEGER NOT NULL REFERENCES players(id),
-                status        TEXT DEFAULT 'registered',
-                registered_at TEXT DEFAULT (datetime('now')),
+                status        TEXT    DEFAULT 'registered',
+                registered_at TEXT    DEFAULT (NOW()::TEXT),
                 UNIQUE(tournament_id, player_id)
-            );
-
+            )
+        """)
+        await c.execute("""
             CREATE TABLE IF NOT EXISTS game_results (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                id            SERIAL PRIMARY KEY,
                 tournament_id INTEGER NOT NULL REFERENCES tournaments(id),
                 player_id     INTEGER NOT NULL REFERENCES players(id),
                 place         INTEGER DEFAULT 0,
@@ -60,144 +90,111 @@ async def init_db():
                 prize         REAL    DEFAULT 0.0,
                 rating_delta  REAL    DEFAULT 0.0,
                 pro_delta     REAL    DEFAULT 0.0,
-                recorded_at   TEXT    DEFAULT (datetime('now'))
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_players_tg   ON players(tg_id);
-            CREATE INDEX IF NOT EXISTS idx_reg_tour     ON registrations(tournament_id);
-            CREATE INDEX IF NOT EXISTS idx_reg_player   ON registrations(player_id);
-            CREATE INDEX IF NOT EXISTS idx_res_tour     ON game_results(tournament_id);
-            CREATE INDEX IF NOT EXISTS idx_res_player   ON game_results(player_id);
+                recorded_at   TEXT    DEFAULT (NOW()::TEXT),
+                UNIQUE(tournament_id, player_id)
+            )
         """)
-        await db.commit()
-
-    # Safe migration for existing DBs
-    _new_cols = [
-        ("fio",              "TEXT DEFAULT ''"),
-        ("phone",            "TEXT DEFAULT ''"),
-        ("city",             "TEXT DEFAULT ''"),
-        ("tg_name",          "TEXT DEFAULT ''"),
-        ("best_place",       "INTEGER DEFAULT 0"),
-        ("profile_complete", "INTEGER DEFAULT 0"),
-        ("pro_score",        "REAL DEFAULT 0.0"),
-        ("knockouts",        "INTEGER DEFAULT 0"),
-        ("games_count",      "INTEGER DEFAULT 0"),
-        ("wins_count",       "INTEGER DEFAULT 0"),
-    ]
-    async with aiosqlite.connect(DB_PATH) as db:
-        for col, col_def in _new_cols:
-            try:
-                await db.execute(f"ALTER TABLE players ADD COLUMN {col} {col_def}")
-                await db.commit()
-            except Exception:
-                pass
+        for sql in [
+            "CREATE INDEX IF NOT EXISTS idx_players_tg  ON players(tg_id)",
+            "CREATE INDEX IF NOT EXISTS idx_reg_tour    ON registrations(tournament_id)",
+            "CREATE INDEX IF NOT EXISTS idx_reg_player  ON registrations(player_id)",
+            "CREATE INDEX IF NOT EXISTS idx_res_tour    ON game_results(tournament_id)",
+            "CREATE INDEX IF NOT EXISTS idx_res_player  ON game_results(player_id)",
+        ]:
+            await c.execute(sql)
 
 
-# ─── PLAYERS ────────────────────────────────────────────────────────────────
+# ─── PLAYERS ─────────────────────────────────────────────────────────────────
 
 async def get_or_create_player(tg_id: int, username: str, tg_name: str) -> Dict:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        row = await db.execute("SELECT * FROM players WHERE tg_id=?", (tg_id,))
-        p = await row.fetchone()
-        if p:
-            await db.execute(
-                "UPDATE players SET username=?, tg_name=? WHERE tg_id=?",
-                (username, tg_name, tg_id)
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow("SELECT * FROM players WHERE tg_id=$1", tg_id)
+        if row:
+            await c.execute(
+                "UPDATE players SET username=$1, tg_name=$2 WHERE tg_id=$3",
+                username, tg_name, tg_id
             )
-            await db.commit()
-            row = await db.execute("SELECT * FROM players WHERE tg_id=?", (tg_id,))
-            return dict(await row.fetchone())
-        await db.execute(
-            "INSERT INTO players (tg_id, username, tg_name) VALUES (?,?,?)",
-            (tg_id, username, tg_name)
+            row = await c.fetchrow("SELECT * FROM players WHERE tg_id=$1", tg_id)
+            return _row(row)
+        await c.execute(
+            "INSERT INTO players (tg_id, username, tg_name) VALUES ($1,$2,$3)",
+            tg_id, username, tg_name
         )
-        await db.commit()
-        row = await db.execute("SELECT * FROM players WHERE tg_id=?", (tg_id,))
-        return dict(await row.fetchone())
+        row = await c.fetchrow("SELECT * FROM players WHERE tg_id=$1", tg_id)
+        return _row(row)
 
 
 async def complete_profile(tg_id: int, fio: str, phone: str, city: str) -> Dict:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        await db.execute(
-            """UPDATE players SET fio=?, phone=?, city=?, profile_complete=1
-               WHERE tg_id=?""",
-            (fio.strip(), phone.strip(), city.strip(), tg_id)
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        await c.execute(
+            """UPDATE players SET fio=$1, phone=$2, city=$3, profile_complete=1
+               WHERE tg_id=$4""",
+            fio.strip(), phone.strip(), city.strip(), tg_id
         )
-        await db.commit()
-        row = await db.execute("SELECT * FROM players WHERE tg_id=?", (tg_id,))
-        return dict(await row.fetchone())
+        row = await c.fetchrow("SELECT * FROM players WHERE tg_id=$1", tg_id)
+        return _row(row)
 
 
 async def get_player_by_tg(tg_id: int) -> Optional[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        row = await db.execute("SELECT * FROM players WHERE tg_id=?", (tg_id,))
-        p = await row.fetchone()
-        return dict(p) if p else None
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow("SELECT * FROM players WHERE tg_id=$1", tg_id)
+        return _row(row) if row else None
 
 
 async def get_player_by_id(player_id: int) -> Optional[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        row = await db.execute("SELECT * FROM players WHERE id=?", (player_id,))
-        p = await row.fetchone()
-        return dict(p) if p else None
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow("SELECT * FROM players WHERE id=$1", player_id)
+        return _row(row) if row else None
 
 
 async def get_all_players(search: str = "") -> List[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    pool = await _get_pool()
+    async with pool.acquire() as c:
         if search:
-            rows = await db.execute(
+            pat = f"%{search}%"
+            rows = await c.fetch(
                 """SELECT * FROM players
-                   WHERE fio LIKE ? OR username LIKE ? OR phone LIKE ?
+                   WHERE fio ILIKE $1 OR username ILIKE $1 OR phone ILIKE $1
                    ORDER BY rating DESC LIMIT 200""",
-                (f"%{search}%", f"%{search}%", f"%{search}%")
+                pat
             )
         else:
-            rows = await db.execute(
+            rows = await c.fetch(
                 "SELECT * FROM players ORDER BY rating DESC LIMIT 200"
             )
-        return [dict(r) for r in await rows.fetchall()]
+        return [_row(r) for r in rows]
 
 
 async def get_leaderboard(city: str = "") -> List[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    pool = await _get_pool()
+    async with pool.acquire() as c:
         if city:
-            rows = await db.execute(
+            rows = await c.fetch(
                 """SELECT * FROM players
-                   WHERE profile_complete=1 AND city=?
+                   WHERE profile_complete=1 AND city=$1
                    ORDER BY rating DESC LIMIT 100""",
-                (city,)
+                city
             )
         else:
-            rows = await db.execute(
+            rows = await c.fetch(
                 """SELECT * FROM players
                    WHERE profile_complete=1
                    ORDER BY rating DESC LIMIT 100"""
             )
-        return [dict(r) for r in await rows.fetchall()]
+        return [_row(r) for r in rows]
 
 
 async def get_admin_stats() -> Dict:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-
-        def q(sql, *args):
-            return db.execute(sql, args)
-
-        r = await (await q("SELECT COUNT(*) c FROM players")).fetchone()
-        total = r["c"]
-        r = await (await q("SELECT COUNT(*) c FROM players WHERE profile_complete=1")).fetchone()
-        active = r["c"]
-        r = await (await q("SELECT COUNT(*) c FROM tournaments WHERE status='upcoming'")).fetchone()
-        upcoming = r["c"]
-        r = await (await q("SELECT COUNT(*) c FROM registrations WHERE status='registered'")).fetchone()
-        regs = r["c"]
-
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        total    = (await c.fetchrow("SELECT COUNT(*) AS c FROM players"))["c"]
+        active   = (await c.fetchrow("SELECT COUNT(*) AS c FROM players WHERE profile_complete=1"))["c"]
+        upcoming = (await c.fetchrow("SELECT COUNT(*) AS c FROM tournaments WHERE status='upcoming'"))["c"]
+        regs     = (await c.fetchrow("SELECT COUNT(*) AS c FROM registrations WHERE status='registered'"))["c"]
         return {
             "total_players": total,
             "active_players": active,
@@ -212,217 +209,221 @@ async def admin_update_player(player_id: int, fields: Dict) -> Dict:
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return await get_player_by_id(player_id) or {}
-    clause = ", ".join(f"{k}=?" for k in updates)
-    vals = list(updates.values()) + [player_id]
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        await db.execute(f"UPDATE players SET {clause} WHERE id=?", vals)
-        await db.commit()
-        row = await db.execute("SELECT * FROM players WHERE id=?", (player_id,))
-        return dict(await row.fetchone())
+    keys = list(updates.keys())
+    vals = list(updates.values())
+    clause = ", ".join(f"{k}=${i+1}" for i, k in enumerate(keys))
+    vals.append(player_id)
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        await c.execute(
+            f"UPDATE players SET {clause} WHERE id=${len(vals)}",
+            *vals
+        )
+        row = await c.fetchrow("SELECT * FROM players WHERE id=$1", player_id)
+        return _row(row)
 
 
-# ─── TOURNAMENTS ────────────────────────────────────────────────────────────
+# ─── TOURNAMENTS ──────────────────────────────────────────────────────────────
 
 async def get_tournaments(status: str = "upcoming", city: str = "") -> List[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    pool = await _get_pool()
+    async with pool.acquire() as c:
         if city:
-            rows = await db.execute(
+            rows = await c.fetch(
                 """SELECT t.*, COUNT(r.id) AS registered_count
                    FROM tournaments t
-                   LEFT JOIN registrations r ON r.tournament_id=t.id AND r.status='registered'
-                   WHERE t.status=? AND t.city=?
+                   LEFT JOIN registrations r
+                          ON r.tournament_id=t.id AND r.status='registered'
+                   WHERE t.status=$1 AND t.city=$2
                    GROUP BY t.id ORDER BY t.start_time ASC""",
-                (status, city)
+                status, city
             )
         else:
-            rows = await db.execute(
+            rows = await c.fetch(
                 """SELECT t.*, COUNT(r.id) AS registered_count
                    FROM tournaments t
-                   LEFT JOIN registrations r ON r.tournament_id=t.id AND r.status='registered'
-                   WHERE t.status=?
+                   LEFT JOIN registrations r
+                          ON r.tournament_id=t.id AND r.status='registered'
+                   WHERE t.status=$1
                    GROUP BY t.id ORDER BY t.start_time ASC""",
-                (status,)
+                status
             )
-        return [dict(r) for r in await rows.fetchall()]
+        return [_row(r) for r in rows]
 
 
 async def get_tournament(tid: int) -> Optional[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        row = await db.execute(
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow(
             """SELECT t.*, COUNT(r.id) AS registered_count
                FROM tournaments t
-               LEFT JOIN registrations r ON r.tournament_id=t.id AND r.status='registered'
-               WHERE t.id=? GROUP BY t.id""",
-            (tid,)
+               LEFT JOIN registrations r
+                      ON r.tournament_id=t.id AND r.status='registered'
+               WHERE t.id=$1 GROUP BY t.id""",
+            tid
         )
-        t = await row.fetchone()
-        return dict(t) if t else None
+        return _row(row) if row else None
 
 
 async def create_tournament(data: Dict) -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow(
             """INSERT INTO tournaments
                (title, description, location, city, start_time, max_players, buy_in, prize_pool)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (data.get("title", ""), data.get("description", ""),
-             data.get("location", ""), data.get("city", "Москва"),
-             data["start_time"], data.get("max_players", 100),
-             data.get("buy_in", 0), data.get("prize_pool", ""))
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id""",
+            data.get("title", ""), data.get("description", ""),
+            data.get("location", ""), data.get("city", "Москва"),
+            data["start_time"], data.get("max_players", 100),
+            data.get("buy_in", 0), data.get("prize_pool", "")
         )
-        await db.commit()
-        return cur.lastrowid
+        return row["id"]
 
 
 async def update_tournament_status(tid: int, status: str):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("UPDATE tournaments SET status=? WHERE id=?", (status, tid))
-        await db.commit()
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        await c.execute("UPDATE tournaments SET status=$1 WHERE id=$2", status, tid)
 
 
 async def delete_tournament(tid: int):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM registrations WHERE tournament_id=?", (tid,))
-        await db.execute("DELETE FROM game_results WHERE tournament_id=?", (tid,))
-        await db.execute("DELETE FROM tournaments WHERE id=?", (tid,))
-        await db.commit()
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        await c.execute("DELETE FROM registrations WHERE tournament_id=$1", tid)
+        await c.execute("DELETE FROM game_results  WHERE tournament_id=$1", tid)
+        await c.execute("DELETE FROM tournaments   WHERE id=$1", tid)
 
 
-# ─── REGISTRATIONS ──────────────────────────────────────────────────────────
+# ─── REGISTRATIONS ───────────────────────────────────────────────────────────
 
 async def register_player(tid: int, player_id: int) -> Dict:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        row = await db.execute(
-            "SELECT * FROM registrations WHERE tournament_id=? AND player_id=?",
-            (tid, player_id)
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        existing = await c.fetchrow(
+            "SELECT * FROM registrations WHERE tournament_id=$1 AND player_id=$2",
+            tid, player_id
         )
-        existing = await row.fetchone()
         if existing:
-            ex = dict(existing)
+            ex = _row(existing)
             if ex["status"] == "cancelled":
-                await db.execute(
-                    "UPDATE registrations SET status='registered', registered_at=datetime('now') WHERE tournament_id=? AND player_id=?",
-                    (tid, player_id)
+                await c.execute(
+                    """UPDATE registrations SET status='registered',
+                       registered_at=(NOW()::TEXT)
+                       WHERE tournament_id=$1 AND player_id=$2""",
+                    tid, player_id
                 )
-                await db.commit()
                 return {"ok": True}
             return {"ok": False, "reason": "already_registered"}
 
-        row = await db.execute(
+        t = await c.fetchrow(
             """SELECT t.max_players, COUNT(r.id) AS cnt
                FROM tournaments t
-               LEFT JOIN registrations r ON r.tournament_id=t.id AND r.status='registered'
-               WHERE t.id=?""",
-            (tid,)
+               LEFT JOIN registrations r
+                      ON r.tournament_id=t.id AND r.status='registered'
+               WHERE t.id=$1 GROUP BY t.id""",
+            tid
         )
-        t = dict(await row.fetchone())
-        if t["cnt"] >= t["max_players"]:
+        if t and t["cnt"] >= t["max_players"]:
             return {"ok": False, "reason": "full"}
 
-        await db.execute(
-            "INSERT INTO registrations (tournament_id, player_id) VALUES (?,?)",
-            (tid, player_id)
+        await c.execute(
+            "INSERT INTO registrations (tournament_id, player_id) VALUES ($1,$2)",
+            tid, player_id
         )
-        await db.commit()
         return {"ok": True}
 
 
 async def unregister_player(tid: int, player_id: int):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE registrations SET status='cancelled' WHERE tournament_id=? AND player_id=?",
-            (tid, player_id)
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE registrations SET status='cancelled' WHERE tournament_id=$1 AND player_id=$2",
+            tid, player_id
         )
-        await db.commit()
 
 
 async def is_registered(tid: int, player_id: int) -> bool:
-    async with aiosqlite.connect(DB_PATH) as db:
-        row = await db.execute(
-            "SELECT 1 FROM registrations WHERE tournament_id=? AND player_id=? AND status='registered'",
-            (tid, player_id)
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow(
+            "SELECT 1 FROM registrations WHERE tournament_id=$1 AND player_id=$2 AND status='registered'",
+            tid, player_id
         )
-        return bool(await row.fetchone())
+        return bool(row)
 
 
 async def get_participants(tid: int) -> List[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        rows = await db.execute(
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        rows = await c.fetch(
             """SELECT p.id, p.tg_id, p.fio, p.username, p.city, p.rating,
                       p.wins_count, p.knockouts, r.registered_at
                FROM registrations r
                JOIN players p ON p.id=r.player_id
-               WHERE r.tournament_id=? AND r.status='registered'
+               WHERE r.tournament_id=$1 AND r.status='registered'
                ORDER BY r.registered_at ASC""",
-            (tid,)
+            tid
         )
-        return [dict(r) for r in await rows.fetchall()]
+        return [_row(r) for r in rows]
 
 
 async def get_my_tournaments(player_id: int) -> List[Dict]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        rows = await db.execute(
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        rows = await c.fetch(
             """SELECT t.id, t.title, t.start_time, t.status, t.city,
                       r.status AS reg_status, r.registered_at,
                       gr.place, gr.knockouts, gr.rating_delta, gr.pro_delta, gr.prize
                FROM registrations r
                JOIN tournaments t ON t.id=r.tournament_id
-               LEFT JOIN game_results gr ON gr.tournament_id=t.id AND gr.player_id=r.player_id
-               WHERE r.player_id=?
+               LEFT JOIN game_results gr
+                      ON gr.tournament_id=t.id AND gr.player_id=r.player_id
+               WHERE r.player_id=$1
                ORDER BY t.start_time DESC""",
-            (player_id,)
+            player_id
         )
-        return [dict(r) for r in await rows.fetchall()]
+        return [_row(r) for r in rows]
 
 
-# ─── RESULTS ────────────────────────────────────────────────────────────────
+# ─── RESULTS ─────────────────────────────────────────────────────────────────
 
 async def record_result(tid: int, player_id: int, place: int,
                         knockouts: int = 0, prize: float = 0.0):
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        row = await db.execute("SELECT max_players FROM tournaments WHERE id=?", (tid,))
-        t = await row.fetchone()
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        t = await c.fetchrow("SELECT max_players FROM tournaments WHERE id=$1", tid)
         max_p = t["max_players"] if t else 100
 
-        # Rating formula: more players = more points; 1st place gets max
         rating_delta = max(0, (max_p - place + 1) * 10) + knockouts * 5
         pro_delta    = knockouts * 25.0
 
-        await db.execute(
-            """INSERT OR REPLACE INTO game_results
+        await c.execute(
+            """INSERT INTO game_results
                (tournament_id, player_id, place, knockouts, prize, rating_delta, pro_delta)
-               VALUES (?,?,?,?,?,?,?)""",
-            (tid, player_id, place, knockouts, prize, rating_delta, pro_delta)
+               VALUES ($1,$2,$3,$4,$5,$6,$7)
+               ON CONFLICT (tournament_id, player_id)
+               DO UPDATE SET place=$3, knockouts=$4, prize=$5,
+                             rating_delta=$6, pro_delta=$7""",
+            tid, player_id, place, knockouts, prize, rating_delta, pro_delta
         )
-        # Update player stats
-        row = await db.execute(
-            "SELECT best_place FROM players WHERE id=?", (player_id,)
-        )
-        p = await row.fetchone()
+
+        p = await c.fetchrow("SELECT best_place FROM players WHERE id=$1", player_id)
         best = p["best_place"] if p and p["best_place"] else place
         new_best = min(best, place) if best else place
 
-        await db.execute(
+        await c.execute(
             """UPDATE players SET
-               rating      = rating + ?,
-               pro_score   = pro_score + ?,
-               knockouts   = knockouts + ?,
+               rating      = rating + $1,
+               pro_score   = pro_score + $2,
+               knockouts   = knockouts + $3,
                games_count = games_count + 1,
-               wins_count  = wins_count + ?,
-               best_place  = ?
-               WHERE id=?""",
-            (rating_delta, pro_delta, knockouts,
-             1 if place == 1 else 0, new_best, player_id)
+               wins_count  = wins_count + $4,
+               best_place  = $5
+               WHERE id=$6""",
+            rating_delta, pro_delta, knockouts,
+            1 if place == 1 else 0, new_best, player_id
         )
-        await db.execute(
-            "UPDATE registrations SET status='finished' WHERE tournament_id=? AND player_id=?",
-            (tid, player_id)
+        await c.execute(
+            "UPDATE registrations SET status='finished' WHERE tournament_id=$1 AND player_id=$2",
+            tid, player_id
         )
-        await db.commit()

@@ -7,10 +7,10 @@ ENV DATA_DIR=/app/data
 RUN mkdir -p /app/data && chmod 777 /app/data
 
 RUN pip install --no-cache-dir \
-    aiogram>=3.0.0 \
-    aiohttp>=3.9.0 \
-    aiosqlite==0.20.0 \
-    pydantic-settings==2.7.0
+    "aiogram>=3.0.0" \
+    "aiohttp>=3.9.0" \
+    "asyncpg>=0.29.0" \
+    "pydantic-settings==2.7.0"
 
 COPY . .
 
