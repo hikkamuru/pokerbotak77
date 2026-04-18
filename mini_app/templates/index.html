@@ -47,12 +47,26 @@ img{display:block}
 .nav-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:6px 0;color:var(--muted2);font-size:10px;
-  font-weight:500;letter-spacing:.3px;transition:color .2s;
+  font-weight:500;letter-spacing:.3px;
+  transition:color .2s, transform .15s;
+  position:relative;overflow:hidden;
 }
 .nav-btn svg{width:22px;height:22px;transition:transform .2s}
 .nav-btn.active{color:var(--red)}
-.nav-btn.active svg{transform:scale(1.1)}
+.nav-btn.active svg{transform:scale(1.15)}
+.nav-btn:active{transform:scale(.88)}
+/* Ripple */
+.nav-btn::after{
+  content:'';position:absolute;border-radius:50%;
+  width:60px;height:60px;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  background:rgba(212,43,51,.18);
+  transition:transform .35s ease, opacity .35s ease;
+  opacity:0;pointer-events:none;
+}
+.nav-btn:active::after{transform:translate(-50%,-50%) scale(1.4);opacity:1}
 .nav-av{width:28px;height:28px;border-radius:50%;background:var(--card2);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;color:var(--muted2);overflow:hidden;transition:border-color .2s}
+.nav-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .nav-btn.active .nav-av{border-color:var(--red);color:var(--red)}
 
 /* ── PAGE HEADER ─────────────────────────────────────── */
@@ -236,11 +250,20 @@ img{display:block}
 .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .hg-card{
   background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
-  padding:18px 14px;cursor:pointer;transition:border-color .2s;
+  padding:18px 14px;cursor:pointer;
+  transition:border-color .2s, transform .15s, box-shadow .2s;
+  position:relative;overflow:hidden;
 }
+.hg-card:active{transform:scale(.95);box-shadow:0 0 0 2px var(--red)}
 .hg-card:hover{border-color:var(--border2)}
 .hg-title{font-family:'Oswald',sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;color:#fff;letter-spacing:.5px;margin-bottom:6px}
 .hg-sub{font-size:12px;color:var(--muted2);display:flex;align-items:center;gap:5px}
+/* О клубе modal */
+.about-section{margin-bottom:18px}
+.about-section h3{font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;color:var(--red);letter-spacing:.5px;margin-bottom:8px}
+.about-section p{font-size:13px;color:var(--muted2);line-height:1.6}
+.about-legal{background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:12px;padding:14px;margin-top:14px}
+.about-legal p{color:var(--green);font-size:13px;line-height:1.6}
 
 /* ══════════════════════════════════════════════════════
    TOURNAMENTS
@@ -316,7 +339,7 @@ img{display:block}
   border:2px solid rgba(212,43,51,.4);
   display:flex;align-items:center;justify-content:center;
   font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;
-  color:#fff;flex-shrink:0;
+  color:#fff;flex-shrink:0;overflow:hidden;
 }
 .profile-info{flex:1}
 .profile-fio{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:.3px}
@@ -435,6 +458,14 @@ img{display:block}
         <div class="hg-card" onclick="switchScreen('profile')">
           <div class="hg-title">Профиль</div>
           <div class="hg-sub">👤 Мои данные</div>
+        </div>
+        <div class="hg-card" onclick="openSupport()">
+          <div class="hg-title">Поддержка</div>
+          <div class="hg-sub">💬 Написать нам</div>
+        </div>
+        <div class="hg-card" onclick="openAbout()">
+          <div class="hg-title">О клубе</div>
+          <div class="hg-sub">ℹ️ Информация</div>
         </div>
       </div>
     </div>
@@ -688,6 +719,32 @@ img{display:block}
   </div>
 </div>
 
+<!-- ══ MODAL: О КЛУБЕ ════════════════════════════════════════════════════════ -->
+<div class="modal-ov hidden" id="modal-about">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">О клубе</div>
+    <div class="about-section">
+      <h3>AK77 Poker Club</h3>
+      <p>Добро пожаловать в AK77 Poker Club — покер-клуб для настоящих ценителей игры в Брянске и Москве. Мы объединяем игроков всех уровней — от новичков до опытных профессионалов.</p>
+    </div>
+    <div class="about-section">
+      <h3>Наши турниры</h3>
+      <p>Регулярные турниры, рейтинговая система, захватывающая атмосфера и честная игра. Следи за расписанием и не пропускай ни одного события!</p>
+    </div>
+    <div class="about-section">
+      <h3>Рейтинговая система</h3>
+      <p>Зарабатывай рейтинговые очки, делай ноки, поднимайся в таблице лидеров AK77. Лучшие игроки получают специальные звания и привилегии.</p>
+    </div>
+    <div class="about-legal">
+      <p>✅ <b>Полностью легально в России.</b> AK77 Poker Club — клуб по интересам. Мы не проводим азартные игры на деньги. Все турниры носят развлекательный и спортивный характер. Деятельность клуба полностью соответствует законодательству Российской Федерации.</p>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-ok" onclick="closeModal('modal-about')">Понятно</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══ CONFIG ════════════════════════════════════════════════════════════════
 const tg = window.Telegram?.WebApp;
@@ -853,12 +910,19 @@ function tourCardHtml(t) {
   </div>`;
 }
 
-// Update nav avatars
+// Update nav avatars (use Telegram photo if available, else coloured initials)
 function updateNavAv() {
-  const ini = me ? initials(me.fio || me.tg_name) : '?';
+  const ini      = me ? initials(me.fio || me.tg_name) : '?';
+  const photoUrl = TG?.photo_url || '';
   ['nav-av','nav-av2','nav-av3','nav-av4','nav-av5'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.textContent = ini;
+    if (!el) return;
+    if (photoUrl) {
+      el.innerHTML = `<img src="${photoUrl}" alt="av" onerror="this.parentElement.textContent='${ini}'">`;
+    } else {
+      el.innerHTML = '';
+      el.textContent = ini;
+    }
   });
 }
 
@@ -923,7 +987,15 @@ function switchScreen(name) {
 
 // ══ HOME ═══════════════════════════════════════════════════════════════════
 async function loadHome() {
-  if (me) document.getElementById('home-name').textContent = (me.fio||me.tg_name||'Игрок').split(/\s+/)[0];
+  if (me) {
+    // Russian FIO is "Фамилия Имя Отчество" — index 1 = first name.
+    // Prefer stored Telegram first_name, then 2nd word of FIO, then fallback.
+    const parts = (me.fio || '').trim().split(/\s+/);
+    const firstName = me.tg_first_name || TG.first_name
+      || (parts.length >= 2 ? parts[1] : parts[0])
+      || me.tg_name || 'Игрок';
+    document.getElementById('home-name').textContent = firstName;
+  }
   const el = document.getElementById('home-next');
   try {
     const tours = await GET('/api/tournaments?status=upcoming');
@@ -1163,7 +1235,14 @@ async function loadProfile() {
   const name = p.fio || p.tg_name || TG.first_name || '—';
   const ini  = initials(name);
 
-  document.getElementById('pav').textContent      = ini;
+  const photoUrl = TG?.photo_url || '';
+  const pavEl = document.getElementById('pav');
+  if (photoUrl) {
+    pavEl.innerHTML = `<img src="${photoUrl}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.innerHTML='';this.parentElement.textContent='${ini}'">`;
+  } else {
+    pavEl.innerHTML = '';
+    pavEl.textContent = ini;
+  }
   document.getElementById('p-fio').textContent    = name;
   document.getElementById('p-sub').textContent    = (p.is_admin ? '⭐ Администратор · ' : '') + (p.username ? '@'+p.username : 'Игрок');
   document.getElementById('p-city-txt').textContent = p.city || '—';
@@ -1272,6 +1351,22 @@ async function loadPlayers(q='') {
 function searchPlayers(q) {
   clearTimeout(playersTimer);
   playersTimer = setTimeout(() => loadPlayers(q), 400);
+}
+
+// ══ SUPPORT & ABOUT ══════════════════════════════════════════════════════════
+// ⬇ Change this to your actual support Telegram username or chat link
+const SUPPORT_LINK = 'https://t.me/AK77PokerBot';
+
+function openSupport() {
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(SUPPORT_LINK);
+  } else {
+    window.open(SUPPORT_LINK, '_blank');
+  }
+}
+
+function openAbout() {
+  openModal('modal-about');
 }
 
 // ══ INIT ══════════════════════════════════════════════════════════════════════
