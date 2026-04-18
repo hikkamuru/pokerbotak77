@@ -9,11 +9,12 @@
 <style>
 /* ── VARIABLES ─────────────────────────────────────── */
 :root{
-  --bg:#0c0c0c; --bg2:#111; --card:#161616; --card2:#1c1c1c;
-  --red:#d42b33; --red2:#a01e25; --red-dim:rgba(212,43,51,.15);
-  --text:#f2f2f2; --muted:#5a5a5a; --muted2:#888;
-  --border:#1f1f1f; --border2:#2a2a2a;
-  --green:#2ecc71; --gold:#f1c40f; --blue:#3498db;
+  --bg:#060604; --bg2:#0c0b08; --card:#111008; --card2:#181610;
+  --red:#c9a227; --red2:#8a6f1a; --red-dim:rgba(201,162,39,.12);
+  --text:#f0e8cc; --muted:#48443a; --muted2:#7a7060;
+  --border:#1e1c12; --border2:#2c2818;
+  --green:#2ecc71; --gold:#c9a227; --gold-bright:#f0c842; --blue:#3498db;
+  --gold-glow:rgba(201,162,39,.3); --gold-glow2:rgba(201,162,39,.08);
   --radius:16px; --nav-h:70px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
@@ -25,9 +26,62 @@ button{font-family:'Montserrat',sans-serif;cursor:pointer;border:none;outline:no
 input{font-family:'Montserrat',sans-serif;outline:none}
 img{display:block}
 
+/* ── ANIMATIONS ─────────────────────────────────────── */
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes goldPulse{
+  0%,100%{box-shadow:0 0 0 0 var(--gold-glow)}
+  50%{box-shadow:0 0 22px 6px rgba(201,162,39,0)}
+}
+@keyframes float{
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  50%{transform:translateY(-7px) rotate(2deg)}
+}
+@keyframes shimmer{
+  0%{background-position:-200% center}
+  100%{background-position:200% center}
+}
+@keyframes goldBorderGlow{
+  0%,100%{border-color:rgba(201,162,39,.2)}
+  50%{border-color:rgba(201,162,39,.6)}
+}
+@keyframes navGlow{
+  0%,100%{text-shadow:none}
+  50%{text-shadow:0 0 12px var(--gold-glow)}
+}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* Screen entrance */
+.screen.active{display:flex;animation:fadeInUp .28s ease both}
+
+/* Card stagger animations */
+.screen.active .hg-card:nth-child(1){animation:fadeInUp .3s .04s ease both}
+.screen.active .hg-card:nth-child(2){animation:fadeInUp .3s .08s ease both}
+.screen.active .hg-card:nth-child(3){animation:fadeInUp .3s .12s ease both}
+.screen.active .hg-card:nth-child(4){animation:fadeInUp .3s .16s ease both}
+
+/* Floating chip */
+.chip-svg{animation:float 4s ease-in-out infinite}
+
+/* Rating banner pulse */
+.rating-banner{animation:goldBorderGlow 3s ease-in-out infinite}
+
+/* Active nav glow */
+.nav-btn.active{animation:navGlow 2.5s ease-in-out infinite}
+
+/* Gold shimmer on logo */
+.reg-logo{
+  background:linear-gradient(90deg,#c9a227 0%,#f0d060 40%,#c9a227 60%,#f0d060 100%);
+  background-size:200% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:shimmer 3s linear infinite;
+}
+
 /* ── SCREENS ────────────────────────────────────────── */
 .screen{display:none;flex-direction:column;height:100vh;overflow:hidden}
-.screen.active{display:flex}
 
 /* ── SCROLL CONTENT ────────────────────────────────── */
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -60,7 +114,7 @@ img{display:block}
   content:'';position:absolute;border-radius:50%;
   width:60px;height:60px;top:50%;left:50%;
   transform:translate(-50%,-50%) scale(0);
-  background:rgba(212,43,51,.18);
+  background:rgba(201,162,39,.18);
   transition:transform .35s ease, opacity .35s ease;
   opacity:0;pointer-events:none;
 }
@@ -78,7 +132,7 @@ img{display:block}
 }
 
 /* ── SPINNER ─────────────────────────────────────────── */
-.spin{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:rot .7s linear infinite;margin:48px auto}
+.spin{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:rot .7s linear infinite;margin:48px auto}
 @keyframes rot{to{transform:rotate(360deg)}}
 
 /* ── TOAST ───────────────────────────────────────────── */
@@ -126,9 +180,9 @@ img{display:block}
 /* ── BADGES ──────────────────────────────────────────── */
 .badge{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;line-height:1}
 .badge-dark{background:#0c0c0c;color:var(--muted2);border:1px solid var(--border2)}
-.badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(212,43,51,.3)}
+.badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(201,162,39,.3)}
 .badge-green{background:rgba(46,204,113,.12);color:var(--green);border:1px solid rgba(46,204,113,.25)}
-.badge-sold{background:rgba(212,43,51,.2);color:#ff6b70;border:1px solid rgba(212,43,51,.4)}
+.badge-sold{background:rgba(201,162,39,.2);color:#ff6b70;border:1px solid rgba(201,162,39,.4)}
 
 /* ── ACTION BUTTON ───────────────────────────────────── */
 .act-btn{
@@ -170,7 +224,7 @@ img{display:block}
   border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:5px;
   position:relative;overflow:hidden;transition:border-color .2s;
 }
-.ach-card.earned{border-color:rgba(212,43,51,.35)}
+.ach-card.earned{border-color:rgba(201,162,39,.35)}
 .ach-card.locked{opacity:.32;filter:grayscale(.9)}
 .ach-icon{font-size:24px;line-height:1}
 .ach-title{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;
@@ -261,15 +315,15 @@ img{display:block}
 
 /* Rating banner */
 .rating-banner{
-  background:linear-gradient(135deg,#1a0608 0%,#2d0b10 50%,#1a0608 100%);
-  border-radius:var(--radius);border:1px solid rgba(212,43,51,.25);
+  background:linear-gradient(135deg,#0e0d04 0%,#1c1900 50%,#0e0d04 100%);
+  border-radius:var(--radius);border:1px solid rgba(201,162,39,.35);
   padding:20px 18px;margin-bottom:12px;cursor:pointer;overflow:hidden;position:relative;
 }
 .rb-title{font-family:'Montserrat',sans-serif;font-size:32px;font-weight:700;text-transform:uppercase;color:#fff;letter-spacing:2px;line-height:1}
 .rb-sub{font-size:22px;font-weight:700;text-transform:uppercase;color:var(--red);letter-spacing:1px;margin-bottom:16px}
 .rb-btn{
   display:inline-flex;align-items:center;gap:8px;
-  background:rgba(212,43,51,.2);border:1px solid rgba(212,43,51,.4);
+  background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.4);
   color:var(--red);padding:9px 18px;border-radius:20px;font-size:14px;font-weight:600;
 }
 .rb-deco{position:absolute;right:-20px;top:-20px;width:140px;height:140px;opacity:.04}
@@ -310,7 +364,7 @@ img{display:block}
 /* Tournament detail */
 .t-banner{
   width:100%;aspect-ratio:16/7;border-radius:var(--radius);margin-bottom:16px;
-  background:linear-gradient(135deg,#1a0406,#0c0002);
+  background:linear-gradient(135deg,#161200,#080700);
   display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
 }
 .t-banner-title{font-family:'Montserrat',sans-serif;font-size:28px;font-weight:700;text-transform:uppercase;color:#fff;text-align:center;padding:16px;letter-spacing:1px}
@@ -363,8 +417,8 @@ img{display:block}
 .profile-top{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px}
 .profile-av-big{
   width:76px;height:76px;border-radius:50%;
-  background:linear-gradient(135deg,var(--red2),#5a0008);
-  border:2px solid rgba(212,43,51,.4);
+  background:linear-gradient(135deg,#3a2e00,#1a1500);
+  border:2px solid rgba(201,162,39,.5);
   display:flex;align-items:center;justify-content:center;
   font-family:'Montserrat',sans-serif;font-size:28px;font-weight:700;
   color:#fff;flex-shrink:0;overflow:hidden;
@@ -764,6 +818,20 @@ img{display:block}
   </div>
 </div>
 
+<!-- ══ MODAL: KNOCKOUTS ═══════════════════════════════════════════════════════ -->
+<div class="modal-ov hidden" id="modal-ko">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">💥 Отметить ноки</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:16px">Укажите количество ноков каждого игрока</p>
+    <div id="ko-list"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-ko')">Отмена</button>
+      <button class="btn-ok" onclick="submitKnockouts()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: О КЛУБЕ ════════════════════════════════════════════════════════ -->
 <div class="modal-ov hidden" id="modal-about">
   <div class="modal">
@@ -922,13 +990,14 @@ function toast(msg) {
 function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-// Poker chip SVG
+// Poker chip SVG (gold edition)
 function chipSvg(size = 70) {
   return `<svg class="chip-svg" width="${size}" height="${size}" viewBox="0 0 80 80" fill="none">
-    <circle cx="40" cy="40" r="37" stroke="#d42b33" stroke-width="3.5" stroke-dasharray="10 5"/>
-    <circle cx="40" cy="40" r="28" fill="#1a0406" stroke="#d42b33" stroke-width="2.5"/>
-    <circle cx="40" cy="40" r="18" fill="#220608"/>
-    <text x="40" y="47" text-anchor="middle" fill="#d42b33" font-size="20" font-family="serif" font-weight="bold">♠</text>
+    <circle cx="40" cy="40" r="37" stroke="#c9a227" stroke-width="3.5" stroke-dasharray="10 5" opacity=".9"/>
+    <circle cx="40" cy="40" r="28" fill="#141200" stroke="#c9a227" stroke-width="2.5"/>
+    <circle cx="40" cy="40" r="18" fill="#1e1a00"/>
+    <text x="40" y="47" text-anchor="middle" fill="#c9a227" font-size="20" font-family="serif" font-weight="bold">♠</text>
+    <circle cx="40" cy="40" r="37" stroke="#f0d060" stroke-width=".8" opacity=".3"/>
   </svg>`;
 }
 
@@ -1112,6 +1181,7 @@ async function openTour(id) {
             ${isReg ? '❌ Отменить регистрацию' : full ? '⛔ Мест нет' : '✅ Зарегистрироваться'}
           </button>` : `<div style="text-align:center;padding:20px;color:var(--muted2);font-size:14px">Турнир завершён</div>`}
         ${isAdmin && t.status==='upcoming' ? `
+          <button class="act-btn act-btn-outline" style="border-color:rgba(201,162,39,.4);color:var(--gold);margin-top:10px" onclick="openKnockouts(${id})">💥 Отметить ноки</button>
           <button class="act-btn act-btn-green" onclick="openFinish(${id})">🏁 Завершить и записать результаты</button>` : ''}
         ${isAdmin ? `
           <button class="act-btn act-btn-outline" style="margin-top:6px" onclick="deleteTour(${id})">🗑 Удалить турнир</button>` : ''}
@@ -1172,20 +1242,70 @@ async function deleteTour(id) {
   else if (confirm('Удалить турнир?')) go();
 }
 
+// ══ KNOCKOUTS (during active tournament) ═════════════════════════════════════
+let koTid = null;
+let koParts = [];
+
+async function openKnockouts(id) {
+  koTid = id;
+  try {
+    koParts = await GET(`/api/tournament/${id}/participants`);
+    if (!koParts.length) { toast('Нет участников'); return; }
+    document.getElementById('ko-list').innerHTML = koParts.map(p => `
+      <div class="place-row" style="display:flex;align-items:center;gap:10px">
+        <div class="av" style="width:34px;height:34px;font-size:11px;flex-shrink:0">${initials(p.fio)}</div>
+        <div style="flex:1;font-size:13px;font-weight:600">${p.fio}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="koAdj('${p.id}',-1)"
+            style="width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center">−</button>
+          <input type="number" id="ko-${p.id}" value="0" min="0" max="99"
+            style="width:48px;text-align:center;padding:5px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;font-weight:700">
+          <button onclick="koAdj('${p.id}',1)"
+            style="width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--border2);color:var(--gold);font-size:18px;display:flex;align-items:center;justify-content:center">+</button>
+        </div>
+      </div>`).join('');
+    openModal('modal-ko');
+  } catch(e) { toast(e.message); }
+}
+
+function koAdj(pid, delta) {
+  const el = document.getElementById(`ko-${pid}`);
+  if (!el) return;
+  el.value = Math.max(0, (parseInt(el.value)||0) + delta);
+}
+
+async function submitKnockouts() {
+  const knockouts = koParts
+    .map(p => ({ player_id: p.id, knockouts: +(document.getElementById(`ko-${p.id}`)?.value||0) }))
+    .filter(e => e.knockouts > 0);
+  if (!knockouts.length) { toast('Укажите хотя бы один нок'); return; }
+  try {
+    await POST(`/api/admin/tournament/${koTid}/knockouts`, { knockouts });
+    closeModal('modal-ko');
+    toast(`✅ Ноки записаны!`);
+  } catch(e) { toast(e.message); }
+}
+
 // ══ FINISH TOURNAMENT ═══════════════════════════════════════════════════════
 async function openFinish(id) {
   finishTid = id;
   try {
     finishParts = await GET(`/api/tournament/${id}/participants`);
     if (!finishParts.length) { toast('Нет зарегистрированных участников'); return; }
-    document.getElementById('finish-list').innerHTML = finishParts.map(p => `
-      <div class="place-row">
-        <div class="av" style="width:34px;height:34px;font-size:11px;flex-shrink:0">${initials(p.fio)}</div>
-        <div style="flex:1;font-size:14px;font-weight:500">${p.fio}</div>
-        <select data-pid="${p.id}">
-          <option value="">— место —</option>
+    document.getElementById('finish-list').innerHTML = `
+      <div style="display:grid;grid-template-columns:34px 1fr 110px 72px;gap:6px;padding:0 0 8px;font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">
+        <div></div><div>Игрок</div><div style="text-align:center">Место</div><div style="text-align:center">Ноки 💥</div>
+      </div>` +
+      finishParts.map(p => `
+      <div class="place-row" style="display:grid;grid-template-columns:34px 1fr 110px 72px;align-items:center;gap:6px">
+        <div class="av" style="width:34px;height:34px;font-size:11px">${initials(p.fio)}</div>
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.fio}</div>
+        <select data-pid="${p.id}" style="padding:7px 6px;font-size:13px">
+          <option value="">—</option>
           ${finishParts.map((_,i) => `<option value="${i+1}">${i+1}</option>`).join('')}
         </select>
+        <input type="number" data-ko="${p.id}" min="0" max="99" value="0"
+          style="width:100%;padding:7px 6px;text-align:center;font-size:13px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--text)">
       </div>`).join('');
     openModal('modal-finish');
   } catch(e) { toast(e.message); }
@@ -1194,7 +1314,14 @@ async function openFinish(id) {
 async function submitFinish() {
   const results = [];
   document.querySelectorAll('#finish-list select').forEach(s => {
-    if (s.value) results.push({player_id:+s.dataset.pid, place:+s.value});
+    if (s.value) {
+      const koEl = document.querySelector(`[data-ko="${s.dataset.pid}"]`);
+      results.push({
+        player_id:  +s.dataset.pid,
+        place:      +s.value,
+        knockouts:  +(koEl?.value || 0),
+      });
+    }
   });
   if (!results.length) { toast('Укажите хотя бы одно место'); return; }
   try {

@@ -13,7 +13,7 @@ from app.database import (
     get_leaderboard, get_tournaments, get_tournament, create_tournament,
     update_tournament_status, delete_tournament,
     register_player, unregister_player, is_registered,
-    get_participants, get_my_tournaments, record_result,
+    get_participants, get_my_tournaments, record_result, add_knockouts,
 )
 from config.settings import settings
 
@@ -399,6 +399,21 @@ async def api_admin_delete_tour(request):
     if e:
         return e
     await delete_tournament(int(request.match_info["id"]))
+    return ok({"ok": True})
+
+
+@routes.post("/api/admin/tournament/{id}/knockouts")
+async def api_admin_knockouts(request):
+    """Record knockouts for players during an active tournament.
+    Body: { knockouts: [{player_id, knockouts}] }"""
+    _, e = require_admin(request)
+    if e:
+        return e
+    try:
+        body = await request.json()
+    except Exception:
+        return err("invalid json")
+    await add_knockouts(body.get("knockouts", []))
     return ok({"ok": True})
 
 

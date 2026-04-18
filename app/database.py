@@ -385,6 +385,21 @@ async def get_my_tournaments(player_id: int) -> List[Dict]:
         return [_row(r) for r in rows]
 
 
+# ─── KNOCKOUTS (interim — during active tournament) ─────────────────────────
+
+async def add_knockouts(entries: list) -> None:
+    """Increment knockouts counter for players without finishing the tournament."""
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        for e in entries:
+            ko = int(e.get("knockouts", 0))
+            if ko > 0:
+                await c.execute(
+                    "UPDATE players SET knockouts=knockouts+$1 WHERE id=$2",
+                    ko, int(e["player_id"])
+                )
+
+
 # ─── RESULTS ─────────────────────────────────────────────────────────────────
 
 async def record_result(tid: int, player_id: int, place: int,
