@@ -806,10 +806,10 @@ img{display:block}
     <input id="ct-max" type="number" value="30" min="2" max="500">
     <label>Кол-во столов</label>
     <input id="ct-tables" type="number" value="0" min="0" max="50" placeholder="0 — без разбивки по столам">
-    <label>Бай-ин (₽)</label>
-    <input id="ct-buyin" type="number" value="0" min="0">
-    <label>Призовой фонд</label>
-    <input id="ct-prize" type="text" placeholder="100 000 ₽">
+    <label>Бай-ин (рейтинг) — спишется при регистрации</label>
+    <input id="ct-buyin" type="number" value="0" min="0" placeholder="0 — бесплатно">
+    <label>Призовой фонд (рейтинг) — распределите вручную при завершении</label>
+    <input id="ct-prize" type="number" value="0" min="0" placeholder="0">
     <label>Описание</label>
     <textarea id="ct-desc" rows="3" placeholder="Правила и дополнительная информация..."></textarea>
     <div class="modal-btns">
@@ -1022,7 +1022,7 @@ function tourCardHtml(t) {
   const seats = full
     ? `<span class="badge badge-sold">👥 Sold-out</span>`
     : `<span class="badge badge-dark">👥 ${t.registered_count}/${t.max_players} мест</span>`;
-  const buyIn = t.buy_in ? `<span class="badge badge-dark">💰 ${t.buy_in}₽</span>` : '';
+  const buyIn = t.buy_in ? `<span class="badge badge-dark">💎 ${t.buy_in} рейт.</span>` : '';
   const city  = t.city   ? `<span class="badge badge-dark">📍 ${t.city}</span>` : '';
   return `<div class="t-card" onclick="openTour(${t.id})">
     <div class="t-card-inner">
@@ -1187,8 +1187,8 @@ async function openTour(id) {
         <div class="info-row">📍 <b>${t.location||t.city||'—'}</b></div>
         <div class="info-row">🕐 <b>${fmt(t.start_time)}</b></div>
         <div class="info-row">👥 Мест: <b>${t.registered_count}/${t.max_players}</b></div>
-        ${t.buy_in    ? `<div class="info-row">💰 Бай-ин: <b>${t.buy_in}₽</b></div>` : ''}
-        ${t.prize_pool? `<div class="info-row">🏆 Призы: <b>${t.prize_pool}</b></div>` : ''}
+        ${t.buy_in    ? `<div class="info-row">💎 Бай-ин: <b>${t.buy_in} рейт.</b> <span style="color:var(--muted2);font-size:12px">(спишется при записи)</span></div>` : ''}
+        ${t.prize_pool? `<div class="info-row">🏆 Призовой фонд: <b>${t.prize_pool} рейт.</b></div>` : ''}
         ${t.description ? `<div class="info-row" style="display:block;margin-top:4px;line-height:1.6">${t.description}</div>` : ''}
         ${t.status === 'upcoming' ? `
           ${isReg && reg.table_number ? `
@@ -1228,16 +1228,34 @@ async function loadParts(id) {
   try {
     const list = await GET(`/api/tournament/${id}/participants`);
     if (!list.length) { el.innerHTML = '<div class="empty">Нет участников</div>'; return; }
+    const isAdmin = me?.is_admin;
     el.innerHTML = list.map((p,i) => `
       <div class="participant-row">
-        <div class="av" style="width:36px;height:36px;font-size:12px">${initials(p.fio)}</div>
-        <div>
+        <div class="av" style="width:36px;height:36px;font-size:12px;flex-shrink:0">${initials(p.fio)}</div>
+        <div style="flex:1;min-width:0">
           <div class="p-name">${p.fio||'—'}</div>
-          <div class="p-meta">${p.city||''} · Рейтинг: ${num(p.rating)}</div>
+          <div class="p-meta">${p.city||''} · Рейтинг: ${num(p.rating)}${p.table_number ? ' · Стол #'+p.table_number : ''}</div>
         </div>
         <div class="p-place" style="color:var(--muted2)">#${i+1}</div>
+        ${isAdmin ? `
+        <button onclick="removeParticipant(${id},${p.id})"
+          style="width:30px;height:30px;border-radius:8px;background:rgba(201,162,39,.1);
+                 border:1px solid rgba(201,162,39,.25);color:var(--muted2);font-size:14px;
+                 flex-shrink:0;display:flex;align-items:center;justify-content:center">🗑</button>` : ''}
       </div>`).join('');
   } catch { el.innerHTML = '<div class="empty">Ошибка загрузки</div>'; }
+}
+
+async function removeParticipant(tid, pid) {
+  const go = async () => {
+    try {
+      await DEL(`/api/admin/tournament/${tid}/participant/${pid}`);
+      toast('Участник удалён');
+      loadParts(tid);
+    } catch(e) { toast(e.message); }
+  };
+  if (tg) tg.showConfirm('Удалить участника с турнира?', ok => { if (ok) go(); });
+  else if (confirm('Удалить участника с турнира?')) go();
 }
 
 async function toggleReg(id, isReg) {
@@ -1320,19 +1338,24 @@ async function openFinish(id) {
     finishParts = await GET(`/api/tournament/${id}/participants`);
     if (!finishParts.length) { toast('Нет зарегистрированных участников'); return; }
     document.getElementById('finish-list').innerHTML = `
-      <div style="display:grid;grid-template-columns:34px 1fr 110px 72px;gap:6px;padding:0 0 8px;font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">
-        <div></div><div>Игрок</div><div style="text-align:center">Место</div><div style="text-align:center">Ноки 💥</div>
+      <div style="display:grid;grid-template-columns:34px 1fr 90px 62px 80px;gap:6px;padding:0 0 8px;font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">
+        <div></div><div>Игрок</div>
+        <div style="text-align:center">Место</div>
+        <div style="text-align:center">Ноки 💥</div>
+        <div style="text-align:center">Приз 💎</div>
       </div>` +
       finishParts.map(p => `
-      <div class="place-row" style="display:grid;grid-template-columns:34px 1fr 110px 72px;align-items:center;gap:6px">
+      <div class="place-row" style="display:grid;grid-template-columns:34px 1fr 90px 62px 80px;align-items:center;gap:6px">
         <div class="av" style="width:34px;height:34px;font-size:11px">${initials(p.fio)}</div>
         <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.fio}</div>
-        <select data-pid="${p.id}" style="padding:7px 6px;font-size:13px">
+        <select data-pid="${p.id}" style="padding:7px 4px;font-size:13px">
           <option value="">—</option>
           ${finishParts.map((_,i) => `<option value="${i+1}">${i+1}</option>`).join('')}
         </select>
         <input type="number" data-ko="${p.id}" min="0" max="99" value="0"
-          style="width:100%;padding:7px 6px;text-align:center;font-size:13px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--text)">
+          style="width:100%;padding:7px 4px;text-align:center;font-size:13px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--text)">
+        <input type="number" data-prize="${p.id}" min="0" value="0"
+          style="width:100%;padding:7px 4px;text-align:center;font-size:13px;background:var(--card2);border:1px solid rgba(201,162,39,.3);border-radius:10px;color:var(--gold)">
       </div>`).join('');
     openModal('modal-finish');
   } catch(e) { toast(e.message); }
@@ -1342,11 +1365,13 @@ async function submitFinish() {
   const results = [];
   document.querySelectorAll('#finish-list select').forEach(s => {
     if (s.value) {
-      const koEl = document.querySelector(`[data-ko="${s.dataset.pid}"]`);
+      const koEl    = document.querySelector(`[data-ko="${s.dataset.pid}"]`);
+      const prizeEl = document.querySelector(`[data-prize="${s.dataset.pid}"]`);
       results.push({
-        player_id:  +s.dataset.pid,
-        place:      +s.value,
-        knockouts:  +(koEl?.value || 0),
+        player_id: +s.dataset.pid,
+        place:     +s.value,
+        knockouts: +(koEl?.value    || 0),
+        prize:     +(prizeEl?.value || 0),
       });
     }
   });
@@ -1370,7 +1395,7 @@ async function createTour() {
       max_players: +document.getElementById('ct-max').value||30,
       table_count: +document.getElementById('ct-tables').value||0,
       buy_in:      +document.getElementById('ct-buyin').value||0,
-      prize_pool:  document.getElementById('ct-prize').value.trim()||'',
+      prize_pool:  +document.getElementById('ct-prize').value||0,
       description: document.getElementById('ct-desc').value.trim()||'',
     });
     closeModal('modal-create');
@@ -1378,6 +1403,7 @@ async function createTour() {
     document.getElementById('ct-max').value='30';
     document.getElementById('ct-tables').value='0';
     document.getElementById('ct-buyin').value='0';
+    document.getElementById('ct-prize').value='0';
     toast('✅ Турнир создан!');
     loadTours();
   } catch(e) { toast(e.message); }

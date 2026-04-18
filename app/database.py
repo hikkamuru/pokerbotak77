@@ -323,7 +323,7 @@ async def register_player(tid: int, player_id: int) -> Dict:
             return {"ok": False, "reason": "already_registered"}
 
         t = await c.fetchrow(
-            """SELECT t.max_players, t.table_count, COUNT(r.id) AS cnt
+            """SELECT t.max_players, t.table_count, t.buy_in, COUNT(r.id) AS cnt
                FROM tournaments t
                LEFT JOIN registrations r
                       ON r.tournament_id=t.id AND r.status='registered'
@@ -334,20 +334,40 @@ async def register_player(tid: int, player_id: int) -> Dict:
             return {"ok": False, "reason": "full"}
 
         # Auto-assign table by round-robin
-        tc = int(t["table_count"]) if t and t["table_count"] else 0
-        cnt = int(t["cnt"]) if t else 0
+        tc      = int(t["table_count"]) if t and t["table_count"] else 0
+        cnt     = int(t["cnt"]) if t else 0
+        buy_in  = int(t["buy_in"])  if t and t["buy_in"]  else 0
         table_num = (cnt % tc + 1) if tc > 0 else 0
 
         await c.execute(
             "INSERT INTO registrations (tournament_id, player_id, table_number) VALUES ($1,$2,$3)",
             tid, player_id, table_num
         )
+        # Deduct buy-in from player rating
+        if buy_in > 0:
+            await c.execute(
+                "UPDATE players SET rating = rating - $1 WHERE id=$2",
+                buy_in, player_id
+            )
         return {"ok": True, "table_number": table_num}
 
 
 async def unregister_player(tid: int, player_id: int):
     pool = await _get_pool()
     async with pool.acquire() as c:
+        # Refund buy-in if the player was actually registered
+        reg = await c.fetchrow(
+            "SELECT 1 FROM registrations WHERE tournament_id=$1 AND player_id=$2 AND status='registered'",
+            tid, player_id
+        )
+        if reg:
+            t = await c.fetchrow("SELECT buy_in FROM tournaments WHERE id=$1", tid)
+            buy_in = int(t["buy_in"]) if t and t["buy_in"] else 0
+            if buy_in > 0:
+                await c.execute(
+                    "UPDATE players SET rating = rating + $1 WHERE id=$2",
+                    buy_in, player_id
+                )
         await c.execute(
             "UPDATE registrations SET status='cancelled' WHERE tournament_id=$1 AND player_id=$2",
             tid, player_id
@@ -441,7 +461,7 @@ async def record_result(tid: int, player_id: int, place: int,
         t = await c.fetchrow("SELECT max_players FROM tournaments WHERE id=$1", tid)
         max_p = t["max_players"] if t else 100
 
-        rating_delta = max(0, (max_p - place + 1) * 10) + knockouts * 5
+        rating_delta = max(0, (max_p - place + 1) * 10) + knockouts * 5 + int(prize)
         pro_delta    = knockouts * 25.0
 
         await c.execute(

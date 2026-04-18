@@ -415,6 +415,18 @@ async def api_admin_delete_tour(request):
     return ok({"ok": True})
 
 
+@routes.delete("/api/admin/tournament/{tid}/participant/{pid}")
+async def api_admin_remove_participant(request):
+    """Admin removes a player from a tournament (with buy-in refund)."""
+    _, e = require_admin(request)
+    if e:
+        return e
+    tid = int(request.match_info["tid"])
+    pid = int(request.match_info["pid"])   # player DB id
+    await unregister_player(tid, pid)
+    return ok({"ok": True})
+
+
 @routes.post("/api/admin/tournament/{id}/knockouts")
 async def api_admin_knockouts(request):
     """Record knockouts for players during an active tournament.
