@@ -379,6 +379,33 @@ async def api_leaderboard(request):
 
 # ── ADMIN ─────────────────────────────────────────────────────────────────────
 
+@routes.post("/api/admin/refresh-photos")
+async def api_refresh_photos(request):
+    """Fetch Telegram profile photos for all players via Bot API and store them."""
+    _, e = require_admin(request)
+    if e:
+        return e
+    import asyncio
+    from bot import _save_profile_photo
+    from app import notifications as _notif
+    bot = _notif._bot
+    if not bot:
+        return err("bot not available")
+    players = await get_all_players()
+    updated = 0
+
+    async def _do(p):
+        nonlocal updated
+        try:
+            await _save_profile_photo(bot, p["tg_id"])
+            updated += 1
+        except Exception:
+            pass
+
+    await asyncio.gather(*[_do(p) for p in players if p.get("tg_id")])
+    return ok({"updated": updated})
+
+
 @routes.get("/api/admin/stats")
 async def api_admin_stats(request):
     _, e = require_admin(request)

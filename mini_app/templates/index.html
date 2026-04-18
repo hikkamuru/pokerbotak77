@@ -1536,6 +1536,11 @@ async function loadProfile() {
           <div class="section-row-label">Все игроки</div>
           <div class="section-row-value" id="as-pl-link">›</div>
         </div>
+        <div class="section-row" onclick="refreshPhotos()">
+          <div class="section-row-icon">🖼️</div>
+          <div class="section-row-label">Обновить аватарки игроков</div>
+          <div class="section-row-value" id="refresh-photo-status">›</div>
+        </div>
         <div class="section-row" onclick="switchScreen('tournaments')">
           <div class="section-row-icon">🏆</div>
           <div class="section-row-label">Управление турнирами</div>
@@ -1555,6 +1560,19 @@ async function loadAdminStats() {
     document.getElementById('as-a').textContent = s.total_players;
     document.getElementById('as-pl-link').textContent = s.total_players;
   } catch {}
+}
+
+async function refreshPhotos() {
+  const el = document.getElementById('refresh-photo-status');
+  el.textContent = '⏳';
+  try {
+    const r = await POST('/api/admin/refresh-photos', {});
+    el.textContent = `✅ ${r.updated}`;
+    setTimeout(() => { el.textContent = '›'; }, 3000);
+  } catch(e) {
+    el.textContent = '❌';
+    setTimeout(() => { el.textContent = '›'; }, 3000);
+  }
 }
 
 // ══ MY GAMES ══════════════════════════════════════════════════════════════════
