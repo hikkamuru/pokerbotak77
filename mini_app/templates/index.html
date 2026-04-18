@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>AK77 Poker Club</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ── VARIABLES ─────────────────────────────────────── */
 :root{
@@ -72,8 +72,8 @@ img{display:block}
 /* ── PAGE HEADER ─────────────────────────────────────── */
 .page-hd{
   padding:20px 16px 0;flex-shrink:0;
-  font-family:'Oswald',sans-serif;font-size:38px;font-weight:700;
-  text-transform:uppercase;letter-spacing:2px;color:#fff;
+  font-family:'Inter',sans-serif;font-size:34px;font-weight:800;
+  letter-spacing:-1px;color:#fff;
   line-height:1;
 }
 
@@ -152,6 +152,34 @@ img{display:block}
 /* ── EMPTY STATE ─────────────────────────────────────── */
 .empty{color:var(--muted2);text-align:center;padding:40px 16px;font-size:14px}
 
+/* ── OPEN APP BUTTON ─────────────────────────────────── */
+.open-app-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--red);color:#fff;padding:14px 32px;
+  border-radius:14px;font-family:'Inter',sans-serif;
+  font-size:15px;font-weight:700;letter-spacing:.2px;
+  text-decoration:none;margin-top:16px;
+  transition:background .2s;border:none;cursor:pointer;
+}
+.open-app-btn:hover{background:var(--red2)}
+
+/* ── ACHIEVEMENTS ────────────────────────────────────── */
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.ach-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:5px;
+  position:relative;overflow:hidden;transition:border-color .2s;
+}
+.ach-card.earned{border-color:rgba(212,43,51,.35)}
+.ach-card.locked{opacity:.32;filter:grayscale(.9)}
+.ach-icon{font-size:24px;line-height:1}
+.ach-title{font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;
+  color:#fff;text-transform:uppercase;letter-spacing:.3px;line-height:1.2}
+.ach-desc{font-size:11px;color:var(--muted2);line-height:1.4}
+.ach-check{position:absolute;top:8px;right:8px;font-size:13px;
+  background:var(--red-dim);border-radius:50%;width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center}
+
 /* ══════════════════════════════════════════════════════
    REGISTRATION
 ════════════════════════════════════════════════════════ */
@@ -171,7 +199,7 @@ img{display:block}
   background:var(--card);border:1px solid var(--border);
   border-radius:24px;padding:24px;
 }
-.reg-card-title{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;color:#fff;margin-bottom:20px;letter-spacing:.5px}
+.reg-card-title{font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:20px;letter-spacing:-.3px}
 
 /* City pills */
 .city-row{display:flex;gap:10px;margin-bottom:20px}
@@ -398,6 +426,10 @@ img{display:block}
   <div class="reg-logo-wrap">
     <div class="reg-logo">AK77</div>
     <div class="reg-tagline">Poker Club</div>
+    <button class="open-app-btn" onclick="openApp()">
+      <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/></svg>
+      Открыть приложение
+    </button>
   </div>
   <div class="reg-card">
     <div class="reg-card-title">Регистрация</div>
@@ -599,6 +631,15 @@ img{display:block}
           <div class="stat-box"><div class="stat-val stat-val-sm" id="ps-wins">0</div><div class="stat-label">Побед</div></div>
           <div class="stat-box"><div class="stat-val stat-val-sm" id="ps-games">0</div><div class="stat-label">Игр</div></div>
         </div>
+      </div>
+
+      <!-- Achievements -->
+      <div class="stats-section">
+        <div class="stats-section-title">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Достижения
+        </div>
+        <div class="ach-grid" id="ach-grid"></div>
       </div>
 
       <!-- Profile rows -->
@@ -1257,6 +1298,7 @@ async function loadProfile() {
   document.getElementById('ps-games').textContent  = p.games_count || 0;
 
   updateNavAv();
+  renderAchievements(p);
 
   // Admin block
   const ab = document.getElementById('admin-block');
@@ -1351,6 +1393,46 @@ async function loadPlayers(q='') {
 function searchPlayers(q) {
   clearTimeout(playersTimer);
   playersTimer = setTimeout(() => loadPlayers(q), 400);
+}
+
+// ══ OPEN APP ═════════════════════════════════════════════════════════════════
+const BOT_LINK = 'https://t.me/AK77PokerBot';
+function openApp() {
+  if (tg?.openTelegramLink) tg.openTelegramLink(BOT_LINK);
+  else window.open(BOT_LINK, '_blank');
+}
+
+// ══ ACHIEVEMENTS ═════════════════════════════════════════════════════════════
+const ACHIEVEMENTS = [
+  { id:'welcome',   icon:'🎰', title:'Добро пожаловать!',     desc:'Вступить в AK77 Poker Club',          check: m => true },
+  { id:'first',     icon:'🃏', title:'Первая раздача',         desc:'Сыграть первый турнир',               check: m => (m.games_count||0) >= 1 },
+  { id:'active',    icon:'🏅', title:'Активный игрок',         desc:'Сыграть 5 турниров',                  check: m => (m.games_count||0) >= 5 },
+  { id:'veteran',   icon:'👑', title:'Ветеран клуба',          desc:'Сыграть 10 турниров',                 check: m => (m.games_count||0) >= 10 },
+  { id:'champion',  icon:'🥇', title:'Победитель',             desc:'Занять 1-е место в турнире',          check: m => (m.wins_count||0) >= 1 },
+  { id:'triple',    icon:'🏆', title:'Трёхкратный чемпион',    desc:'Одержать 3 победы',                   check: m => (m.wins_count||0) >= 3 },
+  { id:'ko1',       icon:'💥', title:'Первый нок',             desc:'Выбить первого соперника',            check: m => (m.knockouts||0) >= 1 },
+  { id:'ko10',      icon:'🔫', title:'Охотник',                desc:'Сделать 10 ноков',                    check: m => (m.knockouts||0) >= 10 },
+  { id:'rating50',  icon:'⭐', title:'Рейтинговый игрок',      desc:'Набрать 50 рейтинговых очков',        check: m => (m.rating||0) >= 50 },
+  { id:'legend',    icon:'🌟', title:'Легенда AK77',           desc:'Набрать 200 рейтинговых очков',       check: m => (m.rating||0) >= 200 },
+];
+
+function renderAchievements(m) {
+  const el = document.getElementById('ach-grid');
+  if (!el) return;
+  const earned = ACHIEVEMENTS.filter(a => a.check(m)).length;
+  el.innerHTML = ACHIEVEMENTS.map(a => {
+    const ok = a.check(m);
+    return `<div class="ach-card ${ok ? 'earned' : 'locked'}">
+      ${ok ? `<div class="ach-check">✓</div>` : ''}
+      <div class="ach-icon">${a.icon}</div>
+      <div class="ach-title">${a.title}</div>
+      <div class="ach-desc">${a.desc}</div>
+    </div>`;
+  }).join('');
+  // Show earned count in the section title
+  const title = document.querySelector('#ach-grid')?.previousElementSibling;
+  if (title) title.querySelector?.('svg')?.insertAdjacentHTML?.('afterend',
+    `<span style="font-size:11px;color:var(--muted2);font-family:'Inter',sans-serif;font-weight:500;text-transform:none;margin-left:4px">${earned}/${ACHIEVEMENTS.length}</span>`);
 }
 
 // ══ SUPPORT & ABOUT ══════════════════════════════════════════════════════════
