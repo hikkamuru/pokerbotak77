@@ -2,7 +2,7 @@ from urllib.parse import quote
 
 from aiogram import Router
 from aiogram.filters import CommandStart
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 from app.database import get_or_create_player
 from config.settings import settings
@@ -29,14 +29,14 @@ async def cmd_start(message: Message) -> None:
     un   = quote(message.from_user.username   or "", safe="")
     webapp_url = f"{base}?tg={message.from_user.id}&fn={fn}&un={un}"
 
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(
+    # InlineKeyboardMarkup — button is attached to the message permanently
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
                 text="🃏 Открыть клуб AK77",
                 web_app=WebAppInfo(url=webapp_url),
             )]
-        ],
-        resize_keyboard=True,
+        ]
     )
 
     await message.answer(
