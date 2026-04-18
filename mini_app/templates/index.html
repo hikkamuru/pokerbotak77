@@ -996,6 +996,30 @@ function fmt(s) {
 function initials(name) { return (name||'?').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?'; }
 function num(n) { return Math.round(n||0); }
 
+// Generate a consistent colour for a player based on their name
+const AV_COLORS = [
+  '#c9a227','#d4894a','#c0564a','#9b6bbf','#4a90d9',
+  '#3aaa8a','#5bbf6a','#d45e8a','#7a9bbf','#bf8a3a'
+];
+function avatarColor(str) {
+  let h = 0;
+  for (let i = 0; i < (str||'').length; i++) h = (str.charCodeAt(i) + ((h << 5) - h)) | 0;
+  return AV_COLORS[Math.abs(h) % AV_COLORS.length];
+}
+
+// Build an avatar element: photo for current user, coloured initials for others
+function avHtml(p, size = 32, fontSize = 10) {
+  const isMe    = me && (me.tg_id === p.tg_id || me.id === p.id);
+  const photo   = isMe ? (TG?.photo_url || '') : '';
+  const ini     = initials(p.fio || p.tg_name);
+  const color   = avatarColor(p.fio || p.tg_name || String(p.tg_id));
+  const bg      = photo ? '#000' : color;
+  const inner   = photo
+    ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${ini}'">`
+    : ini;
+  return `<div class="av" style="width:${size}px;height:${size}px;font-size:${fontSize}px;flex-shrink:0;background:${bg};color:#fff;font-weight:700">${inner}</div>`;
+}
+
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -1231,7 +1255,7 @@ async function loadParts(id) {
     const isAdmin = me?.is_admin;
     el.innerHTML = list.map((p,i) => `
       <div class="participant-row">
-        <div class="av" style="width:36px;height:36px;font-size:12px;flex-shrink:0">${initials(p.fio)}</div>
+        ${avHtml(p, 36, 12)}
         <div style="flex:1;min-width:0">
           <div class="p-name">${p.fio||'—'}</div>
           <div class="p-meta">${p.city||''} · Рейтинг: ${num(p.rating)}${p.table_number ? ' · Стол #'+p.table_number : ''}</div>
@@ -1428,7 +1452,7 @@ function renderRating(list) {
     <tr>
       <td><div class="r-player-cell">
         <span class="r-rank">${medal[i]||i+1}</span>
-        <div class="av" style="width:32px;height:32px;font-size:10px;flex-shrink:0">${initials(p.fio)}</div>
+        ${avHtml(p, 32, 10)}
         <span class="r-nick">${(p.fio||'—').split(/\s+/).slice(0,2).join(' ')}</span>
       </div></td>
       <td class="r-val-muted">${p.knockouts||0}</td>
@@ -1564,7 +1588,7 @@ async function loadPlayers(q='') {
     if (!list.length) { el.innerHTML = '<div class="empty">Игроков нет</div>'; return; }
     el.innerHTML = list.map(p => `
       <div class="player-card">
-        <div class="av" style="width:44px;height:44px;font-size:14px">${initials(p.fio||p.tg_name)}</div>
+        ${avHtml(p, 44, 14)}
         <div class="pc-info">
           <div class="pc-name">${p.fio||p.tg_name||'—'}</div>
           <div class="pc-meta">${p.phone||''} · ${p.city||''} ${!p.profile_complete?'· ⏳ не зарег.':''}</div>
