@@ -103,6 +103,7 @@ async def init_db():
             # Migrations for existing databases
             "ALTER TABLE tournaments   ADD COLUMN IF NOT EXISTS table_count  INTEGER DEFAULT 0",
             "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS table_number INTEGER DEFAULT 0",
+            "ALTER TABLE players       ADD COLUMN IF NOT EXISTS photo_url    TEXT    DEFAULT ''",
         ]:
             await c.execute(sql)
 
@@ -126,6 +127,18 @@ async def get_or_create_player(tg_id: int, username: str, tg_name: str) -> Dict:
         )
         row = await c.fetchrow("SELECT * FROM players WHERE tg_id=$1", tg_id)
         return _row(row)
+
+
+async def update_photo_url(tg_id: int, photo_url: str) -> None:
+    """Store the player's Telegram profile photo URL."""
+    if not photo_url:
+        return
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE players SET photo_url=$1 WHERE tg_id=$2",
+            photo_url, tg_id
+        )
 
 
 async def complete_profile(tg_id: int, fio: str, phone: str, city: str) -> Dict:

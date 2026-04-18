@@ -14,6 +14,7 @@ from app.database import (
     update_tournament_status, delete_tournament,
     register_player, unregister_player, is_registered, get_my_registration,
     get_participants, get_my_tournaments, record_result, add_knockouts,
+    update_photo_url,
 )
 from app import notifications
 from config.settings import settings
@@ -270,6 +271,22 @@ async def api_register_profile(request):
     player = await complete_profile(u["id"], fio, phone, city)
     player["is_admin"] = is_admin(u["id"])
     return ok(player)
+
+
+@routes.post("/api/update-photo")
+async def api_update_photo(request):
+    """Save the player's Telegram profile photo URL (sent from the frontend)."""
+    u, e = require_auth(request)
+    if e:
+        return e
+    try:
+        body = await request.json()
+    except Exception:
+        return err("invalid json")
+    photo_url = str(body.get("photo_url", "")).strip()
+    if photo_url:
+        await update_photo_url(u["id"], photo_url)
+    return ok({"ok": True})
 
 
 @routes.get("/api/my-games")

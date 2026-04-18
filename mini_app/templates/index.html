@@ -511,12 +511,12 @@ img{display:block}
 
     <div class="reg-field">
       <div class="reg-label">ФИО <span style="color:var(--red)">*</span></div>
-      <input class="reg-input" id="reg-fio" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
+      <input class="reg-input" id="reg-fio" type="text" placeholder="Иванов Иван Иванович" autocomplete="name" enterkeyhint="next">
     </div>
 
     <div class="reg-field">
       <div class="reg-label">Номер телефона <span style="color:var(--red)">*</span></div>
-      <input class="reg-input" id="reg-phone" type="tel" placeholder="+7 900 000-00-00" autocomplete="tel">
+      <input class="reg-input" id="reg-phone" type="tel" placeholder="+7 900 000-00-00" autocomplete="tel" enterkeyhint="done">
     </div>
 
     <div class="reg-error" id="reg-err"></div>
@@ -1010,7 +1010,7 @@ function avatarColor(str) {
 // Build an avatar element: photo for current user, coloured initials for others
 function avHtml(p, size = 32, fontSize = 10) {
   const isMe    = me && (me.tg_id === p.tg_id || me.id === p.id);
-  const photo   = isMe ? (TG?.photo_url || '') : '';
+  const photo   = isMe ? (TG?.photo_url || p.photo_url || '') : (p.photo_url || '');
   const ini     = initials(p.fio || p.tg_name);
   const color   = avatarColor(p.fio || p.tg_name || String(p.tg_id));
   const bg      = photo ? '#000' : color;
@@ -1084,6 +1084,7 @@ let selectedCity = '';
 
 function selectCity(city) {
   selectedCity = city;
+  document.activeElement?.blur();
   document.getElementById('city-bryansk').classList.toggle('active', city==='Брянск');
   document.getElementById('city-moscow').classList.toggle('active',  city==='Москва');
 }
@@ -1692,6 +1693,10 @@ async function init() {
       '⚠️ Откройте приложение через кнопку в боте <b>@AK77PokerBot</b>.';
     document.getElementById('reg-btn').disabled = true;
     return;
+  }
+
+  if (TG?.photo_url) {
+    POST('/api/update-photo', { photo_url: TG.photo_url }).catch(() => {});
   }
 
   try {
