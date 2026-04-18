@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     SITE_URL: str = ""
     WEBAPP_HOST: str = "0.0.0.0"
     WEBAPP_PORT: int = 8080
+    DATABASE_URL: str = ""
 
     class Config:
         env_file = str(_ENV_FILE)
