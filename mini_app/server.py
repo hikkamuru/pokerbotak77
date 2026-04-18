@@ -349,12 +349,6 @@ async def api_leave(request):
         return err("player not found", 404)
     tid = int(request.match_info["id"])
     await unregister_player(tid, p["id"])
-    t = await get_tournament(tid)
-    t_name = t["title"] if t else "турнир"
-    await notifications.send(
-        u["id"],
-        f"❌ Вы отменили регистрацию на турнир <b>«{t_name}»</b>."
-    )
     return ok({"ok": True})
 
 
