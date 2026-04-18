@@ -9,8 +9,6 @@ logging.basicConfig(
 from app.database import init_db
 from config.settings import settings
 
-WEBHOOK_PATH = "/tg-webhook"
-
 
 async def main() -> None:
     await init_db()
@@ -19,7 +17,6 @@ async def main() -> None:
     from aiogram.enums import ParseMode
     from aiogram.client.default import DefaultBotProperties
     from aiogram.fsm.storage.memory import MemoryStorage
-    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
     from mini_app.server import create_app
     import bot as bot_module
     from aiohttp import web
@@ -31,34 +28,22 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(bot_module.router)
 
-    # ── Webhook mode ──────────────────────────────────────────────────────────
-    # Setting a webhook automatically kills any competing polling bots
-    # (bothost.ru etc) — Telegram will reject their getUpdates requests.
-    webhook_url = settings.WEBAPP_URL.rstrip("/") + WEBHOOK_PATH
-    await bot.set_webhook(
-        url=webhook_url,
-        drop_pending_updates=True,   # discard stale updates from old bot
-        allowed_updates=["message", "callback_query", "inline_query"],
-    )
-    logging.info(f"[Webhook] set to {webhook_url}")
+    # Delete any existing webhook so polling works cleanly
+    await bot.delete_webhook(drop_pending_updates=True)
+    logging.info("[Bot] webhook deleted, starting polling")
 
-    # ── Web app ───────────────────────────────────────────────────────────────
+    # Start web app
     app = create_app()
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
-    setup_application(app, dp, bot=bot)
-
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, settings.WEBAPP_HOST, settings.WEBAPP_PORT)
     await site.start()
+    logging.info(f"[Server] running on :{settings.WEBAPP_PORT}")
 
-    logging.info(f"[Server] running on :{settings.WEBAPP_PORT}  webapp={settings.WEBAPP_URL}")
-
-    # Run until killed
+    # Start polling
     try:
-        await asyncio.Event().wait()
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
-        await bot.delete_webhook()
         await runner.cleanup()
 
 
