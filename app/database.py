@@ -100,6 +100,9 @@ async def init_db():
             "CREATE INDEX IF NOT EXISTS idx_reg_player  ON registrations(player_id)",
             "CREATE INDEX IF NOT EXISTS idx_res_tour    ON game_results(tournament_id)",
             "CREATE INDEX IF NOT EXISTS idx_res_player  ON game_results(player_id)",
+            # Migrations for existing databases
+            "ALTER TABLE tournaments   ADD COLUMN IF NOT EXISTS table_count  INTEGER DEFAULT 0",
+            "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS table_number INTEGER DEFAULT 0",
         ]:
             await c.execute(sql)
 
@@ -270,12 +273,14 @@ async def create_tournament(data: Dict) -> int:
     async with pool.acquire() as c:
         row = await c.fetchrow(
             """INSERT INTO tournaments
-               (title, description, location, city, start_time, max_players, buy_in, prize_pool)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id""",
+               (title, description, location, city, start_time,
+                max_players, buy_in, prize_pool, table_count)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id""",
             data.get("title", ""), data.get("description", ""),
             data.get("location", ""), data.get("city", "Москва"),
             data["start_time"], data.get("max_players", 100),
-            data.get("buy_in", 0), data.get("prize_pool", "")
+            data.get("buy_in", 0), data.get("prize_pool", ""),
+            int(data.get("table_count", 0)),
         )
         return row["id"]
 
@@ -306,17 +311,19 @@ async def register_player(tid: int, player_id: int) -> Dict:
         if existing:
             ex = _row(existing)
             if ex["status"] == "cancelled":
+                # Re-registering: keep the same table or reassign
+                table_num = ex.get("table_number", 0)
                 await c.execute(
                     """UPDATE registrations SET status='registered',
                        registered_at=(NOW()::TEXT)
                        WHERE tournament_id=$1 AND player_id=$2""",
                     tid, player_id
                 )
-                return {"ok": True}
+                return {"ok": True, "table_number": table_num}
             return {"ok": False, "reason": "already_registered"}
 
         t = await c.fetchrow(
-            """SELECT t.max_players, COUNT(r.id) AS cnt
+            """SELECT t.max_players, t.table_count, COUNT(r.id) AS cnt
                FROM tournaments t
                LEFT JOIN registrations r
                       ON r.tournament_id=t.id AND r.status='registered'
@@ -326,11 +333,16 @@ async def register_player(tid: int, player_id: int) -> Dict:
         if t and t["cnt"] >= t["max_players"]:
             return {"ok": False, "reason": "full"}
 
+        # Auto-assign table by round-robin
+        tc = int(t["table_count"]) if t and t["table_count"] else 0
+        cnt = int(t["cnt"]) if t else 0
+        table_num = (cnt % tc + 1) if tc > 0 else 0
+
         await c.execute(
-            "INSERT INTO registrations (tournament_id, player_id) VALUES ($1,$2)",
-            tid, player_id
+            "INSERT INTO registrations (tournament_id, player_id, table_number) VALUES ($1,$2,$3)",
+            tid, player_id, table_num
         )
-        return {"ok": True}
+        return {"ok": True, "table_number": table_num}
 
 
 async def unregister_player(tid: int, player_id: int):
@@ -350,6 +362,26 @@ async def is_registered(tid: int, player_id: int) -> bool:
             tid, player_id
         )
         return bool(row)
+
+
+async def get_my_registration(tid: int, player_id: int) -> Dict:
+    """Return registration info including table_number."""
+    pool = await _get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow(
+            """SELECT r.status, r.table_number, t.table_count
+               FROM registrations r
+               JOIN tournaments t ON t.id=r.tournament_id
+               WHERE r.tournament_id=$1 AND r.player_id=$2""",
+            tid, player_id
+        )
+        if row and row["status"] == "registered":
+            return {
+                "registered": True,
+                "table_number": row["table_number"] or 0,
+                "table_count":  row["table_count"] or 0,
+            }
+        return {"registered": False, "table_number": 0, "table_count": 0}
 
 
 async def get_participants(tid: int) -> List[Dict]:

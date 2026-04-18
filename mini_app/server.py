@@ -12,9 +12,10 @@ from app.database import (
     get_player_by_id, get_all_players, admin_update_player, get_admin_stats,
     get_leaderboard, get_tournaments, get_tournament, create_tournament,
     update_tournament_status, delete_tournament,
-    register_player, unregister_player, is_registered,
+    register_player, unregister_player, is_registered, get_my_registration,
     get_participants, get_my_tournaments, record_result, add_knockouts,
 )
+from app import notifications
 from config.settings import settings
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -306,12 +307,12 @@ async def api_participants(request):
 async def api_my_reg(request):
     u, e = require_auth(request)
     if e:
-        return ok({"registered": False})
+        return ok({"registered": False, "table_number": 0})
     p = await get_player_by_tg(u["id"])
     if not p:
-        return ok({"registered": False})
-    reg = await is_registered(int(request.match_info["id"]), p["id"])
-    return ok({"registered": reg})
+        return ok({"registered": False, "table_number": 0})
+    reg = await get_my_registration(int(request.match_info["id"]), p["id"])
+    return ok(reg)
 
 
 @routes.post("/api/join/{id}")
@@ -324,7 +325,18 @@ async def api_join(request):
         return err("player not found", 404)
     if not p.get("profile_complete"):
         return err("profile_incomplete", 403)
-    return ok(await register_player(int(request.match_info["id"]), p["id"]))
+    tid = int(request.match_info["id"])
+    result = await register_player(tid, p["id"])
+    if result.get("ok"):
+        t = await get_tournament(tid)
+        t_name = t["title"] if t else "турнир"
+        table_num = result.get("table_number", 0)
+        table_txt = f"\n\n🎰 Ваш стол: <b>#{table_num}</b>" if table_num else ""
+        await notifications.send(
+            u["id"],
+            f"✅ Вы зарегистрированы на турнир <b>«{t_name}»</b>!{table_txt}"
+        )
+    return ok(result)
 
 
 @routes.post("/api/leave/{id}")
@@ -335,7 +347,14 @@ async def api_leave(request):
     p = await get_player_by_tg(u["id"])
     if not p:
         return err("player not found", 404)
-    await unregister_player(int(request.match_info["id"]), p["id"])
+    tid = int(request.match_info["id"])
+    await unregister_player(tid, p["id"])
+    t = await get_tournament(tid)
+    t_name = t["title"] if t else "турнир"
+    await notifications.send(
+        u["id"],
+        f"❌ Вы отменили регистрацию на турнир <b>«{t_name}»</b>."
+    )
     return ok({"ok": True})
 
 
@@ -428,14 +447,25 @@ async def api_admin_finish_tour(request):
     except Exception:
         return err("invalid json")
     tid = int(request.match_info["id"])
-    for r in body.get("results", []):
-        await record_result(
-            tid=tid,
-            player_id=int(r["player_id"]),
-            place=int(r["place"]),
-            knockouts=int(r.get("knockouts", 0)),
-            prize=float(r.get("prize", 0)),
-        )
+    t = await get_tournament(tid)
+    t_name = t["title"] if t else "турнир"
+    results = body.get("results", [])
+    for r in results:
+        pid   = int(r["player_id"])
+        place = int(r["place"])
+        ko    = int(r.get("knockouts", 0))
+        await record_result(tid=tid, player_id=pid, place=place,
+                            knockouts=ko, prize=float(r.get("prize", 0)))
+        # Notify each player about their result
+        player = await get_player_by_id(pid)
+        if player and player.get("tg_id"):
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(place, f"#{place}")
+            ko_txt = f"\n💥 Ноки: <b>{ko}</b>" if ko else ""
+            await notifications.send(
+                player["tg_id"],
+                f"🏁 Турнир <b>«{t_name}»</b> завершён!\n\n"
+                f"Ваше место: <b>{medal}</b>{ko_txt}"
+            )
     await update_tournament_status(tid, "finished")
     return ok({"ok": True})
 

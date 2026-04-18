@@ -26,6 +26,10 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher(storage=MemoryStorage())
+
+    # Make the bot instance available to notification helpers
+    from app import notifications
+    notifications.set_bot(bot)
     dp.include_router(bot_module.router)
 
     # Delete any existing webhook so polling works cleanly
