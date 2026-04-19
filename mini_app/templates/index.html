@@ -493,10 +493,6 @@ img{display:block}
   <div class="reg-logo-wrap">
     <div class="reg-logo">AK77</div>
     <div class="reg-tagline">Poker Club</div>
-    <button class="open-app-btn" onclick="openApp()">
-      <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/></svg>
-      Открыть приложение
-    </button>
   </div>
   <div class="reg-card">
     <div class="reg-card-title">Регистрация</div>
@@ -511,12 +507,12 @@ img{display:block}
 
     <div class="reg-field">
       <div class="reg-label">ФИО <span style="color:var(--red)">*</span></div>
-      <input class="reg-input" id="reg-fio" type="text" placeholder="Иванов Иван Иванович" autocomplete="name" enterkeyhint="next">
+      <input class="reg-input" id="reg-fio" type="text" placeholder="Иванов Иван Иванович" autocomplete="name" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('reg-phone').focus();}">
     </div>
 
     <div class="reg-field">
       <div class="reg-label">Номер телефона <span style="color:var(--red)">*</span></div>
-      <input class="reg-input" id="reg-phone" type="tel" placeholder="+7 900 000-00-00" autocomplete="tel" enterkeyhint="done">
+      <input class="reg-input" id="reg-phone" type="tel" placeholder="+7 900 000-00-00" autocomplete="tel" enterkeyhint="done" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
     </div>
 
     <div class="reg-error" id="reg-err"></div>
@@ -877,6 +873,15 @@ img{display:block}
 // ══ CONFIG ════════════════════════════════════════════════════════════════
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor?.('#0c0c0c'); }
+
+// Dismiss keyboard when user scrolls the registration form
+document.addEventListener('DOMContentLoaded', () => {
+  const regScreen = document.getElementById('screen-reg');
+  if (regScreen) {
+    regScreen.addEventListener('scroll', () => { document.activeElement?.blur(); }, { passive: true });
+    regScreen.addEventListener('touchmove', () => { document.activeElement?.blur(); }, { passive: true });
+  }
+});
 
 const API  = (v => (v && !v.startsWith('__')) ? v : 'https://pokerbotak77.onrender.com')('__API_BASE_URL__');
 
